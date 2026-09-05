@@ -1,4 +1,9 @@
 from taxi_pipeline import cli
+from taxi_pipeline.metadata.statuses import (
+    IngestionDecision,
+    SourceRegistrationResult,
+    SourceStatus,
+)
 from taxi_pipeline.sources.contracts import SourceContractError
 from taxi_pipeline.sources.models import SourceFileMetadata
 
@@ -75,3 +80,64 @@ def test_source_cli_returns_nonzero_on_contract_failure(monkeypatch, capsys):
 
     assert cli.main(["source", "fetch-zones"]) == 1
     assert "Source error: unsupported schema" in capsys.readouterr().err
+
+
+def test_source_registration_cli_prints_registry_decision(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
+    monkeypatch.setattr(cli, "inspect_source", lambda source, root: metadata())
+    monkeypatch.setattr(
+        cli,
+        "_register_metadata",
+        lambda source_metadata: SourceRegistrationResult(
+            source_file_id=3,
+            source_status=SourceStatus.READY,
+            decision=IngestionDecision.PROCEED,
+            is_new_registration=True,
+        ),
+    )
+
+    result = cli.main(
+        ["source", "register", "--service", "yellow", "--year", "2025", "--month", "1"]
+    )
+
+    assert result == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "Source: yellow/2025/01",
+        "Source file ID: 3",
+        "Status: ready",
+        "Decision: proceed",
+    ]
+
+
+def test_taxi_zone_registration_uses_reference_source(monkeypatch):
+    observed = {}
+    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
+    monkeypatch.setattr(
+        cli,
+        "inspect_source",
+        lambda source, root: metadata(
+            dataset_name="taxi_zone_lookup",
+            service_type=None,
+            year=None,
+            month=None,
+            partition_key="reference/taxi_zones",
+            landing_path="data/landing/reference/taxi_zone_lookup.csv",
+            source_format="csv",
+            schema_fingerprint=None,
+            schema_version=None,
+        ),
+    )
+
+    def register(source_metadata):
+        observed["metadata"] = source_metadata
+        return SourceRegistrationResult(
+            source_file_id=4,
+            source_status=SourceStatus.READY,
+            decision=IngestionDecision.PROCEED,
+            is_new_registration=True,
+        )
+
+    monkeypatch.setattr(cli, "_register_metadata", register)
+
+    assert cli.main(["source", "register-zones"]) == 0
+    assert observed["metadata"].partition_key == "reference/taxi_zones"
