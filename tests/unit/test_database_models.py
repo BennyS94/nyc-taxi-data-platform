@@ -4,20 +4,37 @@ from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from taxi_pipeline.database.base import Base
 from taxi_pipeline.database.engine import get_engine
-from taxi_pipeline.database.models import PipelineRun, SourceFile, TaxiZone, YellowTrip
+from taxi_pipeline.database.models import (
+    DataQualityResult,
+    PipelineRun,
+    SourceFile,
+    TaxiZone,
+    YellowTrip,
+)
 
 
-def test_database_metadata_contains_only_phase_two_tables():
+def test_database_metadata_contains_application_owned_tables():
     assert set(Base.metadata.tables) == {
         "ops.source_files",
         "ops.pipeline_runs",
         "raw.yellow_trips",
         "raw.taxi_zones",
+        "ops.data_quality_results",
     }
     assert SourceFile.__table__.schema == "ops"
     assert PipelineRun.__table__.schema == "ops"
     assert YellowTrip.__table__.schema == "raw"
     assert TaxiZone.__table__.schema == "raw"
+    assert DataQualityResult.__table__.schema == "ops"
+
+
+def test_quality_result_has_per_run_check_uniqueness():
+    uniques = {
+        tuple(column.name for column in constraint.columns)
+        for constraint in DataQualityResult.__table__.constraints
+        if constraint.__class__.__name__ == "UniqueConstraint"
+    }
+    assert ("run_id", "check_name") in uniques
 
 
 def test_yellow_trip_preserves_source_names_types_and_nullability():
