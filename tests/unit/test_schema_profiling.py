@@ -24,6 +24,7 @@ def test_compare_detects_added_field_and_type_change():
     assert comparison["type_differences"] == [
         {"name": "id", "yellow_2024_12": "int32", "yellow_2025_01": "int64"}
     ]
+    assert comparison["column_order_difference"] is False
     assert comparison["cbd_congestion_fee"] == {
         "yellow_2024_12": False, "yellow_2025_01": True,
     }

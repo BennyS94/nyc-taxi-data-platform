@@ -37,6 +37,17 @@ def profile_yellow(source: Source, root: Path, zone_ids: set) -> dict:
     arrow_schema = parquet.schema_arrow
     normalized, fingerprint = schema_fingerprint(arrow_schema)
     metadata = parquet.metadata
+    physical_schema = [
+        {
+            "ordinal_position": index,
+            "path": parquet.schema.column(index).path,
+            "physical_type": parquet.schema.column(index).physical_type,
+            "logical_type": str(parquet.schema.column(index).logical_type),
+            "max_definition_level": parquet.schema.column(index).max_definition_level,
+            "max_repetition_level": parquet.schema.column(index).max_repetition_level,
+        }
+        for index in range(len(parquet.schema))
+    ]
     columns = []
     for field in normalized:
         array = pq.read_table(path, columns=[field["name"]]).column(0)
@@ -54,7 +65,7 @@ def profile_yellow(source: Source, root: Path, zone_ids: set) -> dict:
         },
         "schema": {
             "normalized": normalized, "schema_sha256": fingerprint,
-            "arrow_schema": arrow_schema.to_string(), "parquet_schema": str(parquet.schema),
+            "arrow_schema": arrow_schema.to_string(), "parquet_schema": physical_schema,
             "documented_field_presence": {name: name in arrow_schema.names for name in DOCUMENTED_COLUMNS},
         },
         "columns": columns, "observed_domains": domains, "numeric_distributions": numerics,

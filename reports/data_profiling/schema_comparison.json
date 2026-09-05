@@ -1,0 +1,83 @@
+{
+  "schema_sha256": {
+    "yellow_2024_12": "a4ec3c7b9c38f45205b807a5d5246227351321bd6069b1e4ba3fd67c02871674",
+    "yellow_2025_01": "d2b38a269f98178feaf927bdfb2e837852d1ebb72afdb3b08c86f8f32967998b"
+  },
+  "columns_common": [
+    "VendorID",
+    "tpep_pickup_datetime",
+    "tpep_dropoff_datetime",
+    "passenger_count",
+    "trip_distance",
+    "RatecodeID",
+    "store_and_fwd_flag",
+    "PULocationID",
+    "DOLocationID",
+    "payment_type",
+    "fare_amount",
+    "extra",
+    "mta_tax",
+    "tip_amount",
+    "tolls_amount",
+    "improvement_surcharge",
+    "total_amount",
+    "congestion_surcharge",
+    "Airport_fee"
+  ],
+  "columns_only_in_yellow_2024_12": [],
+  "columns_only_in_yellow_2025_01": [
+    "cbd_congestion_fee"
+  ],
+  "type_differences": [],
+  "nullability_differences": [],
+  "column_order_difference": false,
+  "column_order": {
+    "yellow_2024_12": [
+      "VendorID",
+      "tpep_pickup_datetime",
+      "tpep_dropoff_datetime",
+      "passenger_count",
+      "trip_distance",
+      "RatecodeID",
+      "store_and_fwd_flag",
+      "PULocationID",
+      "DOLocationID",
+      "payment_type",
+      "fare_amount",
+      "extra",
+      "mta_tax",
+      "tip_amount",
+      "tolls_amount",
+      "improvement_surcharge",
+      "total_amount",
+      "congestion_surcharge",
+      "Airport_fee"
+    ],
+    "yellow_2025_01": [
+      "VendorID",
+      "tpep_pickup_datetime",
+      "tpep_dropoff_datetime",
+      "passenger_count",
+      "trip_distance",
+      "RatecodeID",
+      "store_and_fwd_flag",
+      "PULocationID",
+      "DOLocationID",
+      "payment_type",
+      "fare_amount",
+      "extra",
+      "mta_tax",
+      "tip_amount",
+      "tolls_amount",
+      "improvement_surcharge",
+      "total_amount",
+      "congestion_surcharge",
+      "Airport_fee",
+      "cbd_congestion_fee"
+    ]
+  },
+  "cbd_congestion_fee": {
+    "yellow_2024_12": false,
+    "yellow_2025_01": true
+  }
+}

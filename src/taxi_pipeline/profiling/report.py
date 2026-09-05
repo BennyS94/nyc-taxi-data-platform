@@ -50,8 +50,7 @@ def markdown_report(yellow_profiles: list[dict], zones: dict, comparison: dict) 
     duration_old = old["datetimes"]["trip_duration_seconds"]
     duration_new = new["datetimes"]["trip_duration_seconds"]
     lines.extend([
-        (f"- `cbd_congestion_fee` is present in January 2025 and absent in December 2024: "
-         f"{comparison['cbd_congestion_fee']}."),
+        "- `cbd_congestion_fee` is absent in December 2024 and present in January 2025.",
         (f"- Pickup timestamps outside the nominal month total "
          f"{duration_old['pickup_outside_nominal_month_count']:,} in December and "
          f"{duration_new['pickup_outside_nominal_month_count']:,} in January."),
@@ -74,6 +73,8 @@ def _source_label(file: dict) -> str:
 
 def _schema_observation(comparison: dict) -> str:
     return (
+        f"Schema fingerprints are `{comparison['schema_sha256']['yellow_2024_12']}` for December "
+        f"and `{comparison['schema_sha256']['yellow_2025_01']}` for January. "
         f"Columns only in December: {comparison['columns_only_in_yellow_2024_12']}. "
         f"Columns only in January: {comparison['columns_only_in_yellow_2025_01']}. "
         f"Type differences: {comparison['type_differences']}. Nullability differences: "

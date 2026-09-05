@@ -31,7 +31,8 @@ def test_json_and_markdown_are_deterministic_and_portable(tmp_path):
     zones = _yellow(None, None, False)
     zones["location_id"] = {"unique_count": 2, "duplicate_count": 0, "minimum": 1, "maximum": 2}
     zones["observed_domains"] = {}
-    comparison = {"columns_only_in_yellow_2024_12": [], "columns_only_in_yellow_2025_01": ["cbd_congestion_fee"],
+    comparison = {"schema_sha256": {"yellow_2024_12": "a", "yellow_2025_01": "b"},
+                  "columns_only_in_yellow_2024_12": [], "columns_only_in_yellow_2025_01": ["cbd_congestion_fee"],
                   "type_differences": [], "nullability_differences": [], "column_order_difference": True,
                   "cbd_congestion_fee": {"yellow_2024_12": False, "yellow_2025_01": True}}
     path = tmp_path / "profile.json"

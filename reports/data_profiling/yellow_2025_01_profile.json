@@ -1,0 +1,813 @@
+{
+  "file": {
+    "service_type": "yellow",
+    "year": 2025,
+    "month": 1,
+    "source_url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2025-01.parquet",
+    "local_path": "data/landing/yellow/2025/01.parquet",
+    "file_size_bytes": 59158238,
+    "checksum_sha256": "9af277e4c0d3f9deb30644da822981e1e7df6af58313170fd3aa8a474485488a",
+    "row_count": 3475226,
+    "column_count": 20,
+    "row_group_count": 4,
+    "created_by": "parquet-cpp-arrow version 16.1.0"
+  },
+  "schema": {
+    "normalized": [
+      {
+        "ordinal_position": 0,
+        "name": "VendorID",
+        "arrow_type": "int32",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 1,
+        "name": "tpep_pickup_datetime",
+        "arrow_type": "timestamp[us]",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 2,
+        "name": "tpep_dropoff_datetime",
+        "arrow_type": "timestamp[us]",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 3,
+        "name": "passenger_count",
+        "arrow_type": "int64",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 4,
+        "name": "trip_distance",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 5,
+        "name": "RatecodeID",
+        "arrow_type": "int64",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 6,
+        "name": "store_and_fwd_flag",
+        "arrow_type": "large_string",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 7,
+        "name": "PULocationID",
+        "arrow_type": "int32",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 8,
+        "name": "DOLocationID",
+        "arrow_type": "int32",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 9,
+        "name": "payment_type",
+        "arrow_type": "int64",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 10,
+        "name": "fare_amount",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 11,
+        "name": "extra",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 12,
+        "name": "mta_tax",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 13,
+        "name": "tip_amount",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 14,
+        "name": "tolls_amount",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 15,
+        "name": "improvement_surcharge",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 16,
+        "name": "total_amount",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 17,
+        "name": "congestion_surcharge",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 18,
+        "name": "Airport_fee",
+        "arrow_type": "double",
+        "nullable": true
+      },
+      {
+        "ordinal_position": 19,
+        "name": "cbd_congestion_fee",
+        "arrow_type": "double",
+        "nullable": true
+      }
+    ],
+    "schema_sha256": "d2b38a269f98178feaf927bdfb2e837852d1ebb72afdb3b08c86f8f32967998b",
+    "arrow_schema": "VendorID: int32\ntpep_pickup_datetime: timestamp[us]\ntpep_dropoff_datetime: timestamp[us]\npassenger_count: int64\ntrip_distance: double\nRatecodeID: int64\nstore_and_fwd_flag: large_string\nPULocationID: int32\nDOLocationID: int32\npayment_type: int64\nfare_amount: double\nextra: double\nmta_tax: double\ntip_amount: double\ntolls_amount: double\nimprovement_surcharge: double\ntotal_amount: double\ncongestion_surcharge: double\nAirport_fee: double\ncbd_congestion_fee: double",
+    "parquet_schema": [
+      {
+        "ordinal_position": 0,
+        "path": "VendorID",
+        "physical_type": "INT32",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 1,
+        "path": "tpep_pickup_datetime",
+        "physical_type": "INT64",
+        "logical_type": "Timestamp(isAdjustedToUTC=false, timeUnit=microseconds, is_from_converted_type=false, force_set_converted_type=false)",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 2,
+        "path": "tpep_dropoff_datetime",
+        "physical_type": "INT64",
+        "logical_type": "Timestamp(isAdjustedToUTC=false, timeUnit=microseconds, is_from_converted_type=false, force_set_converted_type=false)",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 3,
+        "path": "passenger_count",
+        "physical_type": "INT64",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 4,
+        "path": "trip_distance",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 5,
+        "path": "RatecodeID",
+        "physical_type": "INT64",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 6,
+        "path": "store_and_fwd_flag",
+        "physical_type": "BYTE_ARRAY",
+        "logical_type": "String",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 7,
+        "path": "PULocationID",
+        "physical_type": "INT32",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 8,
+        "path": "DOLocationID",
+        "physical_type": "INT32",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 9,
+        "path": "payment_type",
+        "physical_type": "INT64",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 10,
+        "path": "fare_amount",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 11,
+        "path": "extra",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 12,
+        "path": "mta_tax",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 13,
+        "path": "tip_amount",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 14,
+        "path": "tolls_amount",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 15,
+        "path": "improvement_surcharge",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 16,
+        "path": "total_amount",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 17,
+        "path": "congestion_surcharge",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 18,
+        "path": "Airport_fee",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      },
+      {
+        "ordinal_position": 19,
+        "path": "cbd_congestion_fee",
+        "physical_type": "DOUBLE",
+        "logical_type": "None",
+        "max_definition_level": 1,
+        "max_repetition_level": 0
+      }
+    ],
+    "documented_field_presence": {
+      "VendorID": true,
+      "tpep_pickup_datetime": true,
+      "tpep_dropoff_datetime": true,
+      "passenger_count": true,
+      "trip_distance": true,
+      "RatecodeID": true,
+      "store_and_fwd_flag": true,
+      "PULocationID": true,
+      "DOLocationID": true,
+      "payment_type": true,
+      "fare_amount": true,
+      "extra": true,
+      "mta_tax": true,
+      "tip_amount": true,
+      "tolls_amount": true,
+      "improvement_surcharge": true,
+      "total_amount": true,
+      "congestion_surcharge": true,
+      "Airport_fee": true,
+      "cbd_congestion_fee": true
+    }
+  },
+  "columns": [
+    {
+      "ordinal_position": 0,
+      "name": "VendorID",
+      "arrow_type": "int32",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 1,
+      "name": "tpep_pickup_datetime",
+      "arrow_type": "timestamp[us]",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 2,
+      "name": "tpep_dropoff_datetime",
+      "arrow_type": "timestamp[us]",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 3,
+      "name": "passenger_count",
+      "arrow_type": "int64",
+      "nullable": true,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014
+    },
+    {
+      "ordinal_position": 4,
+      "name": "trip_distance",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 5,
+      "name": "RatecodeID",
+      "arrow_type": "int64",
+      "nullable": true,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014
+    },
+    {
+      "ordinal_position": 6,
+      "name": "store_and_fwd_flag",
+      "arrow_type": "large_string",
+      "nullable": true,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014
+    },
+    {
+      "ordinal_position": 7,
+      "name": "PULocationID",
+      "arrow_type": "int32",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 8,
+      "name": "DOLocationID",
+      "arrow_type": "int32",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 9,
+      "name": "payment_type",
+      "arrow_type": "int64",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 10,
+      "name": "fare_amount",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 11,
+      "name": "extra",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 12,
+      "name": "mta_tax",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 13,
+      "name": "tip_amount",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 14,
+      "name": "tolls_amount",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 15,
+      "name": "improvement_surcharge",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 16,
+      "name": "total_amount",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    },
+    {
+      "ordinal_position": 17,
+      "name": "congestion_surcharge",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014
+    },
+    {
+      "ordinal_position": 18,
+      "name": "Airport_fee",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014
+    },
+    {
+      "ordinal_position": 19,
+      "name": "cbd_congestion_fee",
+      "arrow_type": "double",
+      "nullable": true,
+      "null_count": 0,
+      "null_rate": 0.0
+    }
+  ],
+  "observed_domains": {
+    "VendorID": {
+      "null_count": 0,
+      "values": [
+        {
+          "value": 1,
+          "count": 753671
+        },
+        {
+          "value": 2,
+          "count": 2719860
+        },
+        {
+          "value": 6,
+          "count": 489
+        },
+        {
+          "value": 7,
+          "count": 1206
+        }
+      ]
+    },
+    "RatecodeID": {
+      "null_count": 540149,
+      "values": [
+        {
+          "value": 1,
+          "count": 2756472
+        },
+        {
+          "value": 2,
+          "count": 94420
+        },
+        {
+          "value": 3,
+          "count": 8622
+        },
+        {
+          "value": 4,
+          "count": 7092
+        },
+        {
+          "value": 5,
+          "count": 26501
+        },
+        {
+          "value": 6,
+          "count": 7
+        },
+        {
+          "value": 99,
+          "count": 41963
+        }
+      ]
+    },
+    "store_and_fwd_flag": {
+      "null_count": 540149,
+      "values": [
+        {
+          "value": "N",
+          "count": 2927431
+        },
+        {
+          "value": "Y",
+          "count": 7646
+        }
+      ]
+    },
+    "payment_type": {
+      "null_count": 0,
+      "values": [
+        {
+          "value": 0,
+          "count": 540149
+        },
+        {
+          "value": 1,
+          "count": 2444393
+        },
+        {
+          "value": 2,
+          "count": 390429
+        },
+        {
+          "value": 3,
+          "count": 23773
+        },
+        {
+          "value": 4,
+          "count": 76481
+        },
+        {
+          "value": 5,
+          "count": 1
+        }
+      ]
+    }
+  },
+  "numeric_distributions": {
+    "passenger_count": {
+      "non_null_count": 2935077,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014,
+      "minimum": 0,
+      "p01": 1.0,
+      "p50": 1.0,
+      "p95": 3.0,
+      "p99": 5.0,
+      "maximum": 9,
+      "count_lt_0": 0,
+      "count_eq_0": 24656,
+      "count_gt_0": 2910421
+    },
+    "trip_distance": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": 0.0,
+      "p01": 0.0,
+      "p50": 1.67,
+      "p95": 11.83,
+      "p99": 19.5,
+      "maximum": 276423.57,
+      "count_lt_0": 0,
+      "count_eq_0": 90893,
+      "count_gt_0": 3384333
+    },
+    "fare_amount": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -900.0,
+      "p01": -10.7,
+      "p50": 12.11,
+      "p95": 52.0,
+      "p99": 72.3,
+      "maximum": 863372.12,
+      "count_lt_0": 144118,
+      "count_eq_0": 1398,
+      "count_gt_0": 3329710
+    },
+    "total_amount": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -901.0,
+      "p01": -15.7,
+      "p50": 19.95,
+      "p95": 74.0,
+      "p99": 102.92,
+      "maximum": 863380.37,
+      "count_lt_0": 63037,
+      "count_eq_0": 559,
+      "count_gt_0": 3411630
+    },
+    "extra": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -7.5,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p95": 5.0,
+      "p99": 7.5,
+      "maximum": 15.0,
+      "count_lt_0": 29596,
+      "count_eq_0": 1764424,
+      "count_gt_0": 1681206
+    },
+    "mta_tax": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -0.5,
+      "p01": -0.5,
+      "p50": 0.5,
+      "p95": 0.5,
+      "p99": 0.5,
+      "maximum": 10.5,
+      "count_lt_0": 57140,
+      "count_eq_0": 38170,
+      "count_gt_0": 3379916
+    },
+    "tip_amount": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -86.0,
+      "p01": 0.0,
+      "p50": 2.45,
+      "p95": 10.0,
+      "p99": 17.19,
+      "maximum": 400.0,
+      "count_lt_0": 124,
+      "count_eq_0": 1118008,
+      "count_gt_0": 2357094
+    },
+    "tolls_amount": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -126.94,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p95": 6.94,
+      "p99": 6.94,
+      "maximum": 170.94,
+      "count_lt_0": 4559,
+      "count_eq_0": 3259590,
+      "count_gt_0": 211077
+    },
+    "improvement_surcharge": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -1.0,
+      "p01": -1.0,
+      "p50": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "maximum": 1.0,
+      "count_lt_0": 59530,
+      "count_eq_0": 37694,
+      "count_gt_0": 3378002
+    },
+    "congestion_surcharge": {
+      "non_null_count": 2935077,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014,
+      "minimum": -2.5,
+      "p01": -2.5,
+      "p50": 2.5,
+      "p95": 2.5,
+      "p99": 2.5,
+      "maximum": 2.5,
+      "count_lt_0": 48321,
+      "count_eq_0": 225938,
+      "count_gt_0": 2660818
+    },
+    "Airport_fee": {
+      "non_null_count": 2935077,
+      "null_count": 540149,
+      "null_rate": 0.1554284527107014,
+      "minimum": -1.75,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p95": 1.75,
+      "p99": 1.75,
+      "maximum": 6.75,
+      "count_lt_0": 10411,
+      "count_eq_0": 2706446,
+      "count_gt_0": 218220
+    },
+    "cbd_congestion_fee": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -0.75,
+      "p01": 0.0,
+      "p50": 0.75,
+      "p95": 0.75,
+      "p99": 0.75,
+      "maximum": 0.75,
+      "count_lt_0": 6553,
+      "count_eq_0": 1222178,
+      "count_gt_0": 2246495
+    }
+  },
+  "datetimes": {
+    "tpep_pickup_datetime": {
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": "2024-12-31T20:47:55",
+      "maximum": "2025-02-01T00:00:44"
+    },
+    "tpep_dropoff_datetime": {
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": "2024-12-18T07:52:40",
+      "maximum": "2025-02-01T23:44:11"
+    },
+    "trip_duration_seconds": {
+      "non_null_count": 3475226,
+      "null_count": 0,
+      "null_rate": 0.0,
+      "minimum": -3088339,
+      "p01": 40.0,
+      "p50": 702.0,
+      "p95": 2172.0,
+      "p99": 3535.0,
+      "maximum": 337579,
+      "count_lt_0": 124,
+      "count_eq_0": 1927,
+      "count_gt_0": 3473175,
+      "dropoff_before_pickup_count": 124,
+      "either_datetime_null_count": 0,
+      "pickup_outside_nominal_month_count": 22
+    }
+  },
+  "taxi_zone_references": {
+    "PULocationID": {
+      "total_rows": 3475226,
+      "null_count": 0,
+      "non_null_count": 3475226,
+      "matched_count": 3475226,
+      "unmatched_count": 0,
+      "unmatched_rate_among_non_null": 0.0,
+      "unmatched_ids": []
+    },
+    "DOLocationID": {
+      "total_rows": 3475226,
+      "null_count": 0,
+      "non_null_count": 3475226,
+      "matched_count": 3475226,
+      "unmatched_count": 0,
+      "unmatched_rate_among_non_null": 0.0,
+      "unmatched_ids": []
+    }
+  },
+  "exact_duplicate_source_rows": {
+    "total_rows": 3475226,
+    "unique_full_rows": 3475226,
+    "rows_participating_in_duplicate_groups": 0,
+    "duplicate_excess_rows": 0,
+    "duplicate_groups": 0
+  }
+}

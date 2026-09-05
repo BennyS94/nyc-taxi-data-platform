@@ -44,7 +44,10 @@ def compare_schemas(left: pa.Schema, right: pa.Schema, left_sha: str, right_sha:
             for name in common
             if left_by_name[name].nullable != right_by_name[name].nullable
         ],
-        "column_order_difference": left.names != right.names,
+        "column_order_difference": (
+            [name for name in left.names if name in right_by_name]
+            != [name for name in right.names if name in left_by_name]
+        ),
         "column_order": {"yellow_2024_12": left.names, "yellow_2025_01": right.names},
         "cbd_congestion_fee": {
             "yellow_2024_12": "cbd_congestion_fee" in left.names,
