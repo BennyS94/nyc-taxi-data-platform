@@ -82,6 +82,25 @@ python -m taxi_pipeline ingest --service yellow --year 2025 --month 1
 python -m taxi_pipeline ingest-zones
 ```
 
+## Data quality
+
+Phase 06 evaluates each successful Yellow ingestion run with set-based PostgreSQL queries
+and persists one idempotent result per run and check in `ops.data_quality_results`.
+Results use `INFO`, `WARNING`, or `ERROR` severity and `passed`/`violated` status. Run
+warning and error counters represent violated checks, while warning-only quality findings
+leave the ingestion run `succeeded` and never mutate raw rows.
+
+The checks cover source-month timestamps, reversed trip times, negative numeric values,
+zero-value and null-rate metrics, documented code domains, loaded Taxi Zone references,
+and collision-safe exact duplicate grouping across all source fields. Run them with:
+
+```bash
+python -m taxi_pipeline quality run --service yellow --year 2025 --month 1
+```
+
+Rerunning quality updates the same `(run_id, check_name)` results instead of creating
+duplicates.
+
 ## PostgreSQL setup
 
 Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
