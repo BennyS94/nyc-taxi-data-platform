@@ -1,7 +1,7 @@
 # NYC TLC Data Pipeline & Quality Platform
 
-The project currently includes source profiling, reusable source management, and its
-local PostgreSQL foundation.
+The project currently includes source profiling, reusable source management, a
+PostgreSQL-backed source registry, and pipeline-run lifecycle tracking.
 Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and January
 2025, plus the Taxi Zone Lookup. The generated reports capture source identity, physical
 schemas, nulls, observed domains, numeric and datetime distributions, zone reference
@@ -38,6 +38,25 @@ python -m taxi_pipeline source fetch-zones
 
 These commands only manage files under the Git-ignored `data/landing/` directory. They do
 not persist source metadata to PostgreSQL or load raw tables.
+
+## Source registry and run tracking
+
+Phase 04 persists validated source metadata using `(partition_key, checksum_sha256)` as
+the immutable version identity. Exact versions are registered idempotently, loaded
+versions are skipped, and a new checksum for an existing partition is preserved as a
+blocked revision rather than replacing prior data.
+
+Register sources with:
+
+```bash
+python -m taxi_pipeline source register --service yellow --year 2025 --month 1
+python -m taxi_pipeline source register-zones
+```
+
+The application services also track `running`, `succeeded`, `failed`, and `skipped`
+attempts. Retries create new run records, while skip reasons such as `already_loaded` and
+`source_revision_detected` are stored separately from genuine error messages. Phase 04
+does not load any source rows into the raw tables.
 
 ## PostgreSQL setup
 
