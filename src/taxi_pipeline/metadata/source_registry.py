@@ -76,6 +76,24 @@ def get_source_file(session: Session, source_file_id: int) -> SourceFile:
     return source_file
 
 
+def mark_source_loaded(
+    session: Session,
+    source_file_id: int,
+    *,
+    loaded_at: datetime | None = None,
+) -> SourceFile:
+    """Mark a ready source loaded as part of a genuine successful load transaction."""
+    source_file = get_source_file(session, source_file_id)
+    if source_file.status != SourceStatus.READY.value:
+        raise MetadataStateError(
+            f"Cannot mark source {source_file_id} loaded from status {source_file.status}"
+        )
+    source_file.status = SourceStatus.LOADED.value
+    source_file.loaded_at = loaded_at or datetime.now(UTC)
+    session.flush()
+    return source_file
+
+
 def _find_exact_version(
     session: Session,
     metadata: SourceFileMetadata,
