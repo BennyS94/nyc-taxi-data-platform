@@ -1,0 +1,47 @@
+# Private project instructions
+AGENTS.md
+.tasks/
+
+# Data and local storage
+data/
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# dbt local/generated files
+dbt_packages/
+target/
+logs/
+
+# Airflow/local runtime artifacts
+airflow.db
+airflow.cfg
+standalone_admin_password.txt
+
+# General local/runtime files
+*.log
