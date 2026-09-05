@@ -22,6 +22,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: requires a real PostgreSQL database"]
 
 [tool.ruff]
 line-length = 100
