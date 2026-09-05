@@ -47,6 +47,7 @@ def test_download_reuse_and_identity(tmp_path, monkeypatch):
     assert path.read_bytes() == b"source"
     assert tlc.ensure_local(tlc.ZONES, tmp_path) == path
     identity = tlc.file_identity(tlc.ZONES, tmp_path)
+    assert identity["service_type"] == "taxi_zones"
     assert identity["file_size_bytes"] == 6
     assert len(identity["checksum_sha256"]) == 64
 

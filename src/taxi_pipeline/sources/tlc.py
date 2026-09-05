@@ -61,4 +61,7 @@ def file_identity(source: Source, root: Path) -> dict:
     """Compatibility wrapper retaining the Phase 01 report shape."""
     from taxi_pipeline.landing.metadata import file_identity as identify
 
-    return identify(source, root)
+    identity = identify(source, root)
+    if source.dataset_name == "taxi_zone_lookup":
+        identity["service_type"] = "taxi_zones"
+    return identity
