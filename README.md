@@ -1,9 +1,10 @@
 # NYC TLC Data Pipeline & Quality Platform
 
-Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and
-January 2025, plus the Taxi Zone Lookup. The generated reports capture source identity,
-physical schemas, nulls, observed domains, numeric and datetime distributions, zone
-reference coverage, and exact duplicate source-row counts.
+The project currently includes source profiling and its local PostgreSQL foundation.
+Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and January
+2025, plus the Taxi Zone Lookup. The generated reports capture source identity, physical
+schemas, nulls, observed domains, numeric and datetime distributions, zone reference
+coverage, and exact duplicate source-row counts.
 
 The observed January schema adds `cbd_congestion_fee`; the remaining common columns have
 the same Arrow types as December. The source files contain 3,668,371 December rows and
@@ -19,3 +20,34 @@ python scripts/profile_tlc_data.py
 
 The command downloads source files into the Git-ignored `data/landing/` directory and
 reuses them on subsequent runs. It regenerates deterministic JSON and Markdown reports.
+
+## PostgreSQL setup
+
+Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
+`raw` schemas, including operational source/run metadata and empty source-conformed
+Yellow Taxi and Taxi Zone tables. It does not load production TLC rows.
+
+Create local configuration, replace the example password in both password locations,
+and export `DATABASE_URL` from that file into the current shell. Then run:
+
+```bash
+cp .env.example .env
+set -a
+source .env
+set +a
+docker compose up -d
+alembic upgrade head
+```
+
+Docker Compose should report the `postgres` service as healthy. Validate the project with:
+
+```bash
+export TEST_DATABASE_URL="$DATABASE_URL"
+python -m pytest
+ruff check .
+alembic check
+```
+
+On PowerShell, create the file with `Copy-Item .env.example .env` and set the test URL with
+`$env:TEST_DATABASE_URL = $env:DATABASE_URL`. The integration tests require an explicit
+`TEST_DATABASE_URL` and use transactions so test-controlled rows are rolled back.
