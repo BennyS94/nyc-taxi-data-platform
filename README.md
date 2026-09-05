@@ -1,7 +1,8 @@
 # NYC TLC Data Pipeline & Quality Platform
 
 The project currently includes source profiling, reusable source management, a
-PostgreSQL-backed source registry, and pipeline-run lifecycle tracking.
+PostgreSQL-backed source registry, pipeline-run lifecycle tracking, and transactional raw
+ingestion.
 Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and January
 2025, plus the Taxi Zone Lookup. The generated reports capture source identity, physical
 schemas, nulls, observed domains, numeric and datetime distributions, zone reference
@@ -55,17 +56,37 @@ python -m taxi_pipeline source register-zones
 
 The application services also track `running`, `succeeded`, `failed`, and `skipped`
 attempts. Retries create new run records, while skip reasons such as `already_loaded` and
-`source_revision_detected` are stored separately from genuine error messages. Phase 04
-does not load any source rows into the raw tables. PostgreSQL uniqueness plus transaction
-recovery handles concurrent registration of the same exact version; simultaneous
-registration of different new revisions for one partition remains outside the initial
-portfolio concurrency scope.
+`source_revision_detected` are stored separately from genuine error messages. PostgreSQL
+uniqueness plus transaction recovery handles concurrent registration of the same exact
+version; simultaneous registration of different new revisions for one partition remains
+outside the initial portfolio concurrency scope.
+
+## Raw ingestion
+
+Phase 05 reads Yellow Parquet in bounded 50,000-row PyArrow batches and bulk loads raw
+rows through psycopg `COPY`. It assigns deterministic 1-based source row numbers and
+persists source-file, pipeline-run, and UTC ingestion lineage. Historical `yellow_v1`
+files receive `NULL` for the absent `cbd_congestion_fee`; `yellow_v2` values are preserved.
+
+Each file load is transactional. Counts are checked against registered source metadata
+before the raw rows, successful run, and loaded source status commit together. A failed
+load rolls back all raw rows, records the run failure separately, and leaves the source
+ready for a new-run retry. Exact loaded versions and blocked revisions create skipped run
+records without touching raw data. Taxi Zone CSV loading follows the same lifecycle and
+lineage rules.
+
+Run ingestion directly with:
+
+```bash
+python -m taxi_pipeline ingest --service yellow --year 2025 --month 1
+python -m taxi_pipeline ingest-zones
+```
 
 ## PostgreSQL setup
 
 Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
-`raw` schemas, including operational source/run metadata and empty source-conformed
-Yellow Taxi and Taxi Zone tables. It does not load production TLC rows.
+`raw` schemas, including operational source/run metadata and source-conformed Yellow Taxi
+and Taxi Zone tables.
 
 Create local configuration, replace the example password in both password locations,
 and export `DATABASE_URL` from that file into the current shell. Then run:
