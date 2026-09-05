@@ -3,11 +3,11 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    CHAR,
     BigInteger,
     CheckConstraint,
     Identity,
     SmallInteger,
-    String,
     Text,
     UniqueConstraint,
 )
@@ -44,10 +44,10 @@ class SourceFile(Base):
     partition_key: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     landing_path: Mapped[str] = mapped_column(Text, nullable=False)
-    checksum_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    checksum_sha256: Mapped[str] = mapped_column(CHAR(64), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     row_count: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    schema_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    schema_fingerprint: Mapped[str | None] = mapped_column(CHAR(64), nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     discovered_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     downloaded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
