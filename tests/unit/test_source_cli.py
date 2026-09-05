@@ -1,6 +1,9 @@
 from taxi_pipeline import cli
+from taxi_pipeline.ingestion import IngestionResult
 from taxi_pipeline.metadata.statuses import (
     IngestionDecision,
+    RunStatus,
+    SkipReason,
     SourceRegistrationResult,
     SourceStatus,
 )
@@ -141,3 +144,72 @@ def test_taxi_zone_registration_uses_reference_source(monkeypatch):
 
     assert cli.main(["source", "register-zones"]) == 0
     assert observed["metadata"].partition_key == "reference/taxi_zones"
+
+
+def test_ingest_cli_prints_success(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
+    monkeypatch.setattr(cli, "inspect_source", lambda source, root: metadata())
+    monkeypatch.setattr(
+        cli,
+        "_ingest_metadata",
+        lambda source_metadata: IngestionResult(
+            partition_key=source_metadata.partition_key,
+            source_file_id=3,
+            run_id=9,
+            status=RunStatus.SUCCEEDED,
+            rows_read=3_475_226,
+            rows_loaded=3_475_226,
+        ),
+    )
+
+    result = cli.main(["ingest", "--service", "yellow", "--year", "2025", "--month", "1"])
+
+    assert result == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "Source: yellow/2025/01",
+        "Run: 9",
+        "Rows read: 3,475,226",
+        "Rows loaded: 3,475,226",
+        "Status: succeeded",
+    ]
+
+
+def test_ingest_zones_cli_prints_skip_reason(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
+    monkeypatch.setattr(
+        cli,
+        "inspect_source",
+        lambda source, root: metadata(
+            dataset_name="taxi_zone_lookup",
+            service_type=None,
+            year=None,
+            month=None,
+            partition_key="reference/taxi_zones",
+            landing_path="data/landing/reference/taxi_zone_lookup.csv",
+            source_format="csv",
+            schema_fingerprint=None,
+            schema_version=None,
+        ),
+    )
+    monkeypatch.setattr(
+        cli,
+        "_ingest_metadata",
+        lambda source_metadata: IngestionResult(
+            partition_key=source_metadata.partition_key,
+            source_file_id=4,
+            run_id=10,
+            status=RunStatus.SKIPPED,
+            rows_read=0,
+            rows_loaded=0,
+            status_reason=SkipReason.ALREADY_LOADED,
+        ),
+    )
+
+    assert cli.main(["ingest-zones"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "Source: reference/taxi_zones",
+        "Run: 10",
+        "Rows loaded: 0",
+        "Status: skipped",
+        "Reason: already_loaded",
+    ]
