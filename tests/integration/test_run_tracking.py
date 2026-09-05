@@ -163,3 +163,20 @@ def test_success_rejects_non_ready_source_without_partially_finishing_run(db_ses
 
     assert run.status == RunStatus.RUNNING.value
     assert run.finished_at is None
+
+
+def test_success_run_and_source_updates_share_transaction_boundary(db_session):
+    registered = ready_source(db_session)
+    run = start_run(db_session, registered.source_file_id)
+    source = db_session.get(SourceFile, registered.source_file_id)
+
+    savepoint = db_session.begin_nested()
+    mark_run_succeeded(db_session, run.run_id, rows_read=10, rows_loaded=10)
+    savepoint.rollback()
+    db_session.refresh(run)
+    db_session.refresh(source)
+
+    assert run.status == RunStatus.RUNNING.value
+    assert run.finished_at is None
+    assert source.status == SourceStatus.READY.value
+    assert source.loaded_at is None
