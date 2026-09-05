@@ -56,7 +56,10 @@ python -m taxi_pipeline source register-zones
 The application services also track `running`, `succeeded`, `failed`, and `skipped`
 attempts. Retries create new run records, while skip reasons such as `already_loaded` and
 `source_revision_detected` are stored separately from genuine error messages. Phase 04
-does not load any source rows into the raw tables.
+does not load any source rows into the raw tables. PostgreSQL uniqueness plus transaction
+recovery handles concurrent registration of the same exact version; simultaneous
+registration of different new revisions for one partition remains outside the initial
+portfolio concurrency scope.
 
 ## PostgreSQL setup
 
