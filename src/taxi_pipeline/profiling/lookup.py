@@ -10,7 +10,8 @@ from taxi_pipeline.sources.tlc import Source, file_identity
 
 
 def profile_taxi_zones(source: Source, root: Path) -> tuple[dict, set]:
-    frame = pd.read_csv(root / source.landing_path)
+    with pd.option_context("future.infer_string", True):
+        frame = pd.read_csv(root / source.landing_path)
     table = pa.Table.from_pandas(frame, preserve_index=False)
     row_count = len(frame)
     columns = [
