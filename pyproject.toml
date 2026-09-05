@@ -6,7 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "nyc-tlc-data-platform"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["pyarrow>=19,<24", "pandas>=2.2,<4"]
+dependencies = [
+    "alembic>=1.14,<2",
+    "pandas>=2.2,<4",
+    "psycopg[binary]>=3.2,<4",
+    "pyarrow>=19,<24",
+    "SQLAlchemy>=2.0,<3",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
