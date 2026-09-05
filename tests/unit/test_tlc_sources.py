@@ -17,6 +17,28 @@ def test_sources():
     assert tlc.ZONES.landing_path == "data/landing/reference/taxi_zone_lookup.csv"
 
 
+def test_source_partition_metadata():
+    yellow = tlc.yellow_trip_source(2025, 1)
+    assert yellow.dataset_name == "yellow_tripdata"
+    assert yellow.service_type == "yellow"
+    assert yellow.partition_key == "yellow/2025/01"
+    assert yellow.source_format == "parquet"
+
+    zones = tlc.taxi_zone_source()
+    assert zones.dataset_name == "taxi_zone_lookup"
+    assert zones.service_type is None
+    assert zones.year is None
+    assert zones.month is None
+    assert zones.partition_key == "reference/taxi_zones"
+    assert zones.source_format == "csv"
+
+
+@pytest.mark.parametrize(("year", "month"), [(2025, 0), (2025, 13), (999, 1)])
+def test_invalid_yellow_partition_is_rejected(year, month):
+    with pytest.raises(ValueError):
+        tlc.yellow_trip_source(year, month)
+
+
 def test_download_reuse_and_identity(tmp_path, monkeypatch):
     response = io.BytesIO(b"source")
     response.headers = {"Content-Length": "6"}

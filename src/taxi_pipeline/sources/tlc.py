@@ -1,73 +1,64 @@
-"""Phase 01 sources and immutable local downloads."""
+"""Official NYC TLC source definitions and Phase 01 compatibility helpers."""
 
-import hashlib
-import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 from urllib.request import urlopen
 
+from taxi_pipeline.sources.models import SourcePartition
 
-@dataclass(frozen=True)
-class Source:
-    service_type: str
-    year: int | None
-    month: int | None
-    url: str
-    landing_path: str
+TLC_BASE_URL = "https://d37ci6vzurychx.cloudfront.net"
+Source = SourcePartition
 
 
-def yellow_source(year: int, month: int) -> Source:
-    if not 1 <= month <= 12 or not 1 <= year <= 9999:
-        raise ValueError("Invalid source month/year")
-    return Source(
-        "yellow", year, month,
-        f"https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year:04}-{month:02}.parquet",
-        f"data/landing/yellow/{year:04}/{month:02}.parquet",
+def yellow_trip_source(year: int, month: int) -> SourcePartition:
+    """Resolve one monthly Yellow Taxi source without performing network access."""
+    if not 1000 <= year <= 9999:
+        raise ValueError("year must be a four-digit positive integer")
+    if not 1 <= month <= 12:
+        raise ValueError("month must be between 1 and 12")
+    return SourcePartition(
+        dataset_name="yellow_tripdata",
+        service_type="yellow",
+        year=year,
+        month=month,
+        partition_key=f"yellow/{year:04}/{month:02}",
+        source_url=(
+            f"{TLC_BASE_URL}/trip-data/yellow_tripdata_{year:04}-{month:02}.parquet"
+        ),
+        landing_path=f"data/landing/yellow/{year:04}/{month:02}.parquet",
+        source_format="parquet",
     )
 
 
-ZONES = Source(
-    "taxi_zones", None, None,
-    "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv",
-    "data/landing/reference/taxi_zone_lookup.csv",
-)
-SOURCES = (yellow_source(2024, 12), yellow_source(2025, 1), ZONES)
+yellow_source = yellow_trip_source
+
+
+def taxi_zone_source() -> SourcePartition:
+    """Resolve the non-partitioned Taxi Zone Lookup source."""
+    return SourcePartition(
+        dataset_name="taxi_zone_lookup",
+        service_type=None,
+        year=None,
+        month=None,
+        partition_key="reference/taxi_zones",
+        source_url=f"{TLC_BASE_URL}/misc/taxi_zone_lookup.csv",
+        landing_path="data/landing/reference/taxi_zone_lookup.csv",
+        source_format="csv",
+    )
+
+
+ZONES = taxi_zone_source()
+SOURCES = (yellow_trip_source(2024, 12), yellow_trip_source(2025, 1), ZONES)
 
 
 def ensure_local(source: Source, root: Path) -> Path:
-    destination = (root / source.landing_path).resolve()
-    if not destination.is_relative_to((root / "data/landing").resolve()):
-        raise ValueError("Download must stay under data/landing")
-    if destination.exists():
-        return destination
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    partial = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            dir=destination.parent, suffix=".partial", delete=False
-        ) as output:
-            partial = Path(output.name)
-            with urlopen(source.url, timeout=120) as response:
-                expected = response.headers.get("Content-Length")
-                size = 0
-                while chunk := response.read(1024 * 1024):
-                    output.write(chunk)
-                    size += len(chunk)
-                if size == 0 or (expected is not None and size != int(expected)):
-                    raise OSError("Incomplete source download")
-        partial.rename(destination)
-    finally:
-        if partial is not None:
-            partial.unlink(missing_ok=True)
-    return destination
+    """Compatibility wrapper for the Phase 01 profiling command."""
+    from taxi_pipeline.landing.downloader import ensure_local as download
+
+    return download(source, root, opener=urlopen)
 
 
 def file_identity(source: Source, root: Path) -> dict:
-    path = root / source.landing_path
-    with path.open("rb") as stream:
-        checksum = hashlib.file_digest(stream, "sha256").hexdigest()
-    return {
-        "service_type": source.service_type, "year": source.year, "month": source.month,
-        "source_url": source.url, "local_path": source.landing_path,
-        "file_size_bytes": path.stat().st_size, "checksum_sha256": checksum,
-    }
+    """Compatibility wrapper retaining the Phase 01 report shape."""
+    from taxi_pipeline.landing.metadata import file_identity as identify
+
+    return identify(source, root)
