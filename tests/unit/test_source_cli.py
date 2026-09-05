@@ -7,6 +7,7 @@ from taxi_pipeline.metadata.statuses import (
     SourceRegistrationResult,
     SourceStatus,
 )
+from taxi_pipeline.quality import QualityRunSummary
 from taxi_pipeline.sources.contracts import SourceContractError
 from taxi_pipeline.sources.models import SourceFileMetadata
 
@@ -213,3 +214,47 @@ def test_ingest_zones_cli_prints_skip_reason(monkeypatch, capsys):
         "Status: skipped",
         "Reason: already_loaded",
     ]
+
+
+def test_quality_cli_prints_concise_summary(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli,
+        "_run_quality_for_partition",
+        lambda service, year, month: QualityRunSummary(
+            partition_key=f"{service}/{year}/{month:02d}",
+            run_id=12,
+            rows_checked=3_475_226,
+            check_count=27,
+            warnings_violated=8,
+            errors_violated=0,
+        ),
+    )
+
+    result = cli.main(
+        ["quality", "run", "--service", "yellow", "--year", "2025", "--month", "1"]
+    )
+
+    assert result == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "Quality: yellow/2025/01",
+        "Run: 12",
+        "Rows: 3,475,226",
+        "Checks: 27",
+        "Warnings violated: 8",
+        "Errors violated: 0",
+        "Status: completed",
+    ]
+
+
+def test_quality_cli_returns_nonzero_when_target_is_missing(monkeypatch, capsys):
+    def fail(service, year, month):
+        raise ValueError("no successful run")
+
+    monkeypatch.setattr(cli, "_run_quality_for_partition", fail)
+
+    result = cli.main(
+        ["quality", "run", "--service", "yellow", "--year", "2025", "--month", "2"]
+    )
+
+    assert result == 1
+    assert "Quality error: no successful run" in capsys.readouterr().err

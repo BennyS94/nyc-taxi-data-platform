@@ -12,6 +12,11 @@ from taxi_pipeline.database import get_engine
 from taxi_pipeline.ingestion import IngestionResult, ingest_source
 from taxi_pipeline.landing import ensure_local, inspect_source
 from taxi_pipeline.metadata import SourceRegistrationResult, prepare_ingestion
+from taxi_pipeline.quality import (
+    QualityRunSummary,
+    find_latest_successful_run,
+    run_quality_checks,
+)
 from taxi_pipeline.sources import taxi_zone_source, yellow_trip_source
 from taxi_pipeline.sources.models import SourceFileMetadata, SourcePartition
 
@@ -42,12 +47,22 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--year", type=int, required=True)
     ingest.add_argument("--month", type=int, required=True)
     commands.add_parser("ingest-zones", help="ingest the Taxi Zone Lookup into raw")
+
+    quality = commands.add_parser("quality", help="evaluate raw data quality")
+    quality_commands = quality.add_subparsers(dest="quality_command", required=True)
+    quality_run = quality_commands.add_parser("run", help="run quality checks for a month")
+    quality_run.add_argument("--service", choices=("yellow",), required=True)
+    quality_run.add_argument("--year", type=int, required=True)
+    quality_run.add_argument("--month", type=int, required=True)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     """Resolve, acquire, validate, and summarize a requested source."""
     args = build_parser().parse_args(argv)
+    if args.command == "quality":
+        return _quality_command(args)
+
     try:
         source = _source_from_args(args)
         ensure_local(source, REPOSITORY_ROOT)
@@ -99,6 +114,31 @@ def _ingest_metadata(metadata: SourceFileMetadata) -> IngestionResult:
         engine.dispose()
 
 
+def _quality_command(args: argparse.Namespace) -> int:
+    try:
+        summary = _run_quality_for_partition(args.service, args.year, args.month)
+    except (RuntimeError, SQLAlchemyError, ValueError) as error:
+        print(f"Quality error: {error}", file=sys.stderr)
+        return 1
+    _print_quality(summary)
+    return 0
+
+
+def _run_quality_for_partition(service: str, year: int, month: int) -> QualityRunSummary:
+    engine = get_engine()
+    try:
+        with Session(engine) as session, session.begin():
+            run_id = find_latest_successful_run(
+                session,
+                service_type=service,
+                year=year,
+                month=month,
+            )
+            return run_quality_checks(session, run_id)
+    finally:
+        engine.dispose()
+
+
 def _register_with_engine(
     engine: Engine,
     metadata: SourceFileMetadata,
@@ -139,3 +179,13 @@ def _print_ingestion(result: IngestionResult) -> None:
     print(f"Status: {result.status.value}")
     if result.status_reason is not None:
         print(f"Reason: {result.status_reason.value}")
+
+
+def _print_quality(summary: QualityRunSummary) -> None:
+    print(f"Quality: {summary.partition_key}")
+    print(f"Run: {summary.run_id}")
+    print(f"Rows: {summary.rows_checked:,}")
+    print(f"Checks: {summary.check_count}")
+    print(f"Warnings violated: {summary.warnings_violated}")
+    print(f"Errors violated: {summary.errors_violated}")
+    print("Status: completed")
