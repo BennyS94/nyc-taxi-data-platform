@@ -52,6 +52,7 @@ class PipelineRun(Base):
     started_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     rows_read: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     rows_loaded: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     warning_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
