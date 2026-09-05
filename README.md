@@ -1,6 +1,7 @@
 # NYC TLC Data Pipeline & Quality Platform
 
-The project currently includes source profiling and its local PostgreSQL foundation.
+The project currently includes source profiling, reusable source management, and its
+local PostgreSQL foundation.
 Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and January
 2025, plus the Taxi Zone Lookup. The generated reports capture source identity, physical
 schemas, nulls, observed domains, numeric and datetime distributions, zone reference
@@ -20,6 +21,23 @@ python scripts/profile_tlc_data.py
 
 The command downloads source files into the Git-ignored `data/landing/` directory and
 reuses them on subsequent runs. It regenerates deterministic JSON and Markdown reports.
+
+## Source management
+
+Phase 03 provides deterministic official URLs, portable landing paths, safe partial-file
+downloads, SHA-256 identity, and structural validation. It recognizes the profiled Yellow
+schemas as `yellow_v1` (19 baseline fields) and `yellow_v2` (plus
+`cbd_congestion_fee`), and validates required Taxi Zone fields and `LocationID` identity.
+
+Fetch or reuse and inspect a source with:
+
+```bash
+python -m taxi_pipeline source fetch --service yellow --year 2025 --month 1
+python -m taxi_pipeline source fetch-zones
+```
+
+These commands only manage files under the Git-ignored `data/landing/` directory. They do
+not persist source metadata to PostgreSQL or load raw tables.
 
 ## PostgreSQL setup
 
