@@ -1,5 +1,6 @@
 """Operational source registration and pipeline-run lifecycle services."""
 
+from taxi_pipeline.metadata.source_registry import prepare_ingestion, register_source_file
 from taxi_pipeline.metadata.statuses import (
     IngestionDecision,
     MetadataStateError,
@@ -16,4 +17,6 @@ __all__ = [
     "SkipReason",
     "SourceRegistrationResult",
     "SourceStatus",
+    "prepare_ingestion",
+    "register_source_file",
 ]
