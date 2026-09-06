@@ -1,8 +1,8 @@
 # NYC TLC Data Pipeline & Quality Platform
 
-The project currently includes source profiling, reusable source management, a
-PostgreSQL-backed source registry, pipeline-run lifecycle tracking, and transactional raw
-ingestion.
+The project includes source profiling and management, PostgreSQL-backed transactional raw
+ingestion, SQL-first quality checks, a dbt dimensional warehouse, and Apache Airflow 3
+orchestration for the monthly Yellow and Green pipeline.
 Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and January
 2025, plus the Taxi Zone Lookup. The generated reports capture source identity, physical
 schemas, nulls, observed domains, numeric and datetime distributions, zone reference
@@ -164,11 +164,50 @@ python -m taxi_pipeline ingest --service green --year 2025 --month 1
 python -m taxi_pipeline quality run --service green --year 2025 --month 1
 ```
 
+## Airflow orchestration
+
+The `tlc_monthly_pipeline` DAG runs one small, sequential local workflow: resolve the
+month, ensure Taxi Zones, ingest and check Yellow, ingest and check Green, then run
+`dbt build`. Manual runs accept `year` and `month`; scheduled runs use the logical month
+minus two months. `catchup` is disabled and only one DAG run is active at a time.
+
+Airflow uses LocalExecutor and a separate `airflow` database on the existing PostgreSQL
+server. The DAG passes only identifiers and counts through XCom. Application services
+remain directly runnable without Airflow and continue to own downloads, contracts,
+registration, ingestion, quality, and idempotency. This Compose deployment is intended
+for local development and portfolio demonstrations, not production.
+
+After copying `.env.example` to `.env`, replace the PostgreSQL password and all Airflow
+secret/password placeholders. Initialize and start Airflow with:
+
+```bash
+docker compose up airflow-init
+docker compose up -d airflow-api-server airflow-scheduler airflow-dag-processor
+docker compose exec airflow-api-server airflow dags unpause tlc_monthly_pipeline
+```
+
+The UI is available at `http://localhost:8080` using `AIRFLOW_ADMIN_USERNAME` and
+`AIRFLOW_ADMIN_PASSWORD`. Trigger February 2025 from the UI by supplying `year=2025` and
+`month=2`, or from a shell with:
+
+```bash
+docker compose exec airflow-api-server airflow dags trigger \
+  --conf '{"year": 2025, "month": 2}' tlc_monthly_pipeline
+```
+
+Inspect individual task logs in the UI. Component startup logs are also available with
+`docker compose logs airflow-api-server airflow-scheduler airflow-dag-processor`.
+Rerunning the same month records application-level `already_loaded` attempts, reruns
+quality and dbt, and does not duplicate raw or fact rows.
+
+See [`docs/architecture.md`](docs/architecture.md) for component ownership and runtime
+flow.
+
 ## PostgreSQL setup
 
 Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
-`raw` schemas, including operational source/run metadata and source-conformed Yellow Taxi
-and Taxi Zone tables.
+`raw` schemas, including operational source/run metadata and source-conformed Yellow,
+Green, and Taxi Zone tables. Airflow metadata lives in the separate `airflow` database.
 
 Create local configuration, replace the example password in both password locations,
 and export `DATABASE_URL` from that file into the current shell. Then run:
