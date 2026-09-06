@@ -12,15 +12,15 @@ from taxi_pipeline.sources.models import SourceFileMetadata
 pytestmark = pytest.mark.integration
 
 
-def source_metadata(partition: str = "yellow/2025/02", checksum: str = "a" * 64):
+def source_metadata(partition: str = "yellow/2099/02", checksum: str = "a" * 64):
     return SourceFileMetadata(
         dataset_name="yellow_tripdata",
         service_type="yellow",
-        year=2025,
+        year=2099,
         month=2,
         partition_key=partition,
         source_url="https://example.test/yellow.parquet",
-        landing_path="data/landing/yellow/2025/02.parquet",
+        landing_path="data/landing/yellow/2099/02.parquet",
         source_format="parquet",
         checksum_sha256=checksum,
         file_size_bytes=100,
@@ -70,8 +70,8 @@ def test_different_partition_registers_as_independent_ready_source(db_session):
         db_session,
         replace(
             source_metadata(),
-            partition_key="yellow/2025/03",
-            landing_path="data/landing/yellow/2025/03.parquet",
+            partition_key="yellow/2099/03",
+            landing_path="data/landing/yellow/2099/03.parquet",
         ),
     )
 
