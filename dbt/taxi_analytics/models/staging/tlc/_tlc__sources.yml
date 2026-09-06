@@ -1,0 +1,41 @@
+version: 2
+
+sources:
+  - name: tlc_raw
+    description: >-
+      Application- and Alembic-owned source-conformed TLC data. Raw rows retain original
+      source names and deterministic source, row, run, and ingestion lineage.
+    schema: raw
+    tables:
+      - name: yellow_trips
+        description: >-
+          One row per Yellow Taxi source record for each ingested immutable source file.
+          Business anomalies are preserved.
+        columns:
+          - name: _source_file_id
+            description: Source-file version identifier from ops.source_files.
+          - name: _source_row_number
+            description: Deterministic 1-based position within the immutable source file.
+          - name: _pipeline_run_id
+            description: Successful ingestion run that loaded the row.
+          - name: _ingested_at
+            description: UTC system timestamp when the raw row was ingested.
+      - name: taxi_zones
+        description: >-
+          Historical source-conformed Taxi Zone records, versioned by source file.
+        columns:
+          - name: _source_file_id
+            description: Taxi Zone source-file version identifier.
+          - name: _source_row_number
+            description: Deterministic 1-based position within the source CSV.
+          - name: _pipeline_run_id
+            description: Successful ingestion run that loaded the row.
+          - name: _ingested_at
+            description: UTC system timestamp when the raw row was ingested.
+
+  - name: platform_ops
+    description: Application- and Alembic-owned operational metadata used for source state.
+    schema: ops
+    tables:
+      - name: source_files
+        description: Immutable source-file versions and their ingestion lifecycle status.
