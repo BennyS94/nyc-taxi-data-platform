@@ -101,6 +101,31 @@ python -m taxi_pipeline quality run --service yellow --year 2025 --month 1
 Rerunning quality updates the same `(run_id, check_name)` results instead of creating
 duplicates.
 
+## dbt staging
+
+Phase 07 adds a dbt Core/PostgreSQL transformation project under `dbt/taxi_analytics`.
+The dbt-owned `staging` schema contains views for loaded Yellow Taxi rows and the single
+active loaded Taxi Zone version. Raw TLC names are mapped to stable canonical names while
+source, row, run, and ingestion lineage remain available.
+
+The Yellow staging contract supplies `service_type = 'yellow'`, a typed null `trip_type`,
+and `cbd_congestion_fee_amount` for both supported schemas. Historical v1 values remain
+null and v2 values pass through unchanged. Staging performs no business-anomaly filtering,
+aggregation, or zone enrichment.
+
+From `dbt/taxi_analytics`, with the PostgreSQL variables from `.env` exported, run:
+
+```bash
+dbt debug
+dbt parse
+dbt build --select staging
+dbt docs generate
+```
+
+The committed dbt tests enforce lineage integrity, per-source Yellow grain, active Taxi
+Zone version cardinality, and active reference uniqueness. Generated dbt artifacts remain
+ignored.
+
 ## PostgreSQL setup
 
 Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
