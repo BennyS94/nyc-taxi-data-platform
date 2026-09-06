@@ -9,6 +9,88 @@ def write_json(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def green_markdown_report(profile: dict) -> str:
+    """Render the targeted Green baseline evidence as concise Markdown."""
+    file = profile["file"]
+    duration = profile["datetimes"]["trip_duration_seconds"]
+    duplicate = profile["exact_duplicate_source_rows"]
+    lines = [
+        "# Green Taxi January 2025 Profiling Report",
+        "",
+        (
+            "This report records targeted observations from the official Green Taxi January "
+            "2025 Parquet source. Observations support the Phase 09 contract; they do not "
+            "filter rows."
+        ),
+        "",
+        "## Source identity",
+        "",
+        f"- URL: `{file['source_url']}`",
+        f"- Landing path: `{file['local_path']}`",
+        f"- Rows: {file['row_count']:,}",
+        f"- Bytes: {file['file_size_bytes']:,}",
+        f"- SHA-256: `{file['checksum_sha256']}`",
+        f"- Schema SHA-256: `{profile['schema']['schema_sha256']}`",
+        "",
+        "## Physical schema",
+        "",
+        "| # | Source column | Arrow type | Nullable | Null count | Null rate |",
+        "|---:|---|---|---|---:|---:|",
+    ]
+    nulls = {item["name"]: item for item in profile["columns"]}
+    for field in profile["schema"]["normalized"]:
+        item = nulls[field["name"]]
+        lines.append(
+            f"| {field['ordinal_position']} | `{field['name']}` | `{field['arrow_type']}` | "
+            f"{field['nullable']} | {item['null_count']:,} | {item['null_rate']:.6%} |"
+        )
+    lines.extend([
+        "",
+        "## Observed code domains",
+        "",
+        "| Column | Null count | Observed value counts |",
+        "|---|---:|---|",
+    ])
+    for name, item in profile["observed_domains"].items():
+        values = ", ".join(
+            f"`{value['value']}`: {value['count']:,}" for value in item["values"]
+        )
+        lines.append(f"| `{name}` | {item['null_count']:,} | {values} |")
+    lines.extend([
+        "",
+        "## Relevant anomaly evidence",
+        "",
+        f"- Pickup outside January 2025: {duration['pickup_outside_nominal_month_count']:,}",
+        f"- Dropoff before pickup: {duration['dropoff_before_pickup_count']:,}",
+        f"- Exact duplicate excess rows: {duplicate['duplicate_excess_rows']:,}",
+    ])
+    for name in ("trip_distance", "fare_amount", "total_amount"):
+        item = profile["numeric_distributions"][name]
+        lines.append(
+            f"- `{name}` below zero: {item['count_lt_0']:,}; equal to zero: "
+            f"{item['count_eq_0']:,}"
+        )
+    lines.extend(["", "## Taxi Zone referential coverage", ""])
+    for name, item in profile["taxi_zone_references"].items():
+        lines.append(
+            f"- `{name}`: {item['matched_count']:,} matched, "
+            f"{item['unmatched_count']:,} unmatched, {item['null_count']:,} null"
+        )
+    lines.extend([
+        "",
+        "## Contract conclusion",
+        "",
+        (
+            "The observed nullable schema can be preserved source-faithfully in raw and mapped "
+            "into the existing canonical trip model. Green-only `ehail_fee` remains preserved "
+            "in raw; `trip_type` and `cbd_congestion_fee` map directly, while the canonical "
+            "airport fee is null because Green does not supply one."
+        ),
+        "",
+    ])
+    return "\n".join(lines)
+
+
 def markdown_report(yellow_profiles: list[dict], zones: dict, comparison: dict) -> str:
     old, new = yellow_profiles
     lines = [
