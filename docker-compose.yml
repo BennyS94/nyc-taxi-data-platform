@@ -48,7 +48,7 @@ services:
       &airflow-common-environment
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in .env}
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
@@ -87,7 +87,7 @@ services:
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
       interval: 15s
-      timeout: 10s
+      timeout: 30s
       retries: 10
       start_period: 30s
     restart: unless-stopped
@@ -103,9 +103,9 @@ services:
       _AIRFLOW_WWW_USER_CREATE: ""
     command: scheduler
     healthcheck:
-      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname '$${HOSTNAME}'"]
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$${HOSTNAME}\""]
       interval: 15s
-      timeout: 10s
+      timeout: 30s
       retries: 10
       start_period: 30s
     restart: unless-stopped
@@ -121,9 +121,9 @@ services:
       _AIRFLOW_WWW_USER_CREATE: ""
     command: dag-processor
     healthcheck:
-      test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname '$${HOSTNAME}'"]
+      test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$${HOSTNAME}\""]
       interval: 15s
-      timeout: 10s
+      timeout: 30s
       retries: 10
       start_period: 30s
     restart: unless-stopped
