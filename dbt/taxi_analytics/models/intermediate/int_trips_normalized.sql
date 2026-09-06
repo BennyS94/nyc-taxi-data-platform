@@ -26,3 +26,34 @@ select
     pipeline_run_id,
     ingested_at
 from {{ ref('stg_tlc__yellow_trips') }}
+
+union all
+
+select
+    service_type,
+    vendor_id,
+    pickup_datetime,
+    dropoff_datetime,
+    passenger_count,
+    trip_distance_miles,
+    rate_code_id,
+    store_and_fwd_flag,
+    pickup_location_id,
+    dropoff_location_id,
+    payment_type,
+    trip_type,
+    fare_amount,
+    extra_amount,
+    mta_tax_amount,
+    tip_amount,
+    tolls_amount,
+    improvement_surcharge_amount,
+    congestion_surcharge_amount,
+    airport_fee_amount,
+    cbd_congestion_fee_amount,
+    total_amount,
+    source_file_id,
+    source_row_number,
+    pipeline_run_id,
+    ingested_at
+from {{ ref('stg_tlc__green_trips') }}

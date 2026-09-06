@@ -87,3 +87,39 @@ models:
         description: UTC raw ingestion timestamp.
         data_tests:
           - not_null
+
+  - name: stg_tlc__green_trips
+    description: >-
+      One row per raw Green Taxi row from loaded source versions, mapped to the shared
+      canonical trip shape without filtering anomalies. Source trip_type and CBD fee are
+      preserved; airport_fee_amount is a typed null because Green does not supply it.
+      Green-only ehail_fee remains available in raw rather than being discarded there.
+    columns:
+      - name: service_type
+        description: Constant service discriminator, green.
+      - name: pickup_datetime
+        description: Source-local timestamp mapped from lpep_pickup_datetime.
+      - name: dropoff_datetime
+        description: Source-local timestamp mapped from lpep_dropoff_datetime.
+      - name: trip_type
+        description: Green source trip_type, preserved without code normalization.
+      - name: airport_fee_amount
+        description: Typed null because the Green source has no airport fee field.
+      - name: cbd_congestion_fee_amount
+        description: Source cbd_congestion_fee value.
+      - name: source_file_id
+        description: Immutable Green source-file version identifier.
+        data_tests:
+          - not_null
+      - name: source_row_number
+        description: Deterministic 1-based row position within the source file.
+        data_tests:
+          - not_null
+      - name: pipeline_run_id
+        description: Successful ingestion run responsible for the raw row.
+        data_tests:
+          - not_null
+      - name: ingested_at
+        description: UTC raw ingestion timestamp.
+        data_tests:
+          - not_null

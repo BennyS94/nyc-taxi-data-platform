@@ -3,11 +3,15 @@ version: 2
 models:
   - name: int_trips_normalized
     description: >-
-      Canonical Yellow trip boundary at one row per active source record. It preserves
-      source anomalies and technical lineage and is shaped for Phase 09 Green unioning.
+      Canonical Yellow and Green trip boundary at one row per active source record. A
+      UNION ALL preserves source anomalies, row grain, service identity, and lineage.
     columns:
       - name: service_type
         description: Canonical TLC service discriminator.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [yellow, green]
       - name: source_file_id
         description: Immutable source-file version identifier.
       - name: source_row_number
