@@ -54,3 +54,42 @@ models:
         description: ISO weekday number from Monday 1 through Sunday 7.
       - name: is_weekend
         description: True for Saturday and Sunday; null for the Unknown member.
+
+  - name: fct_trips
+    description: >-
+      One analytics-ready active canonical TLC source trip record, including source
+      anomalies rather than asserting real-world validity. Normal builds append only
+      source_file_ids absent from the target; --full-refresh rebuilds all active rows.
+      Pickup and dropoff keys both role-play dim_zone, and unresolved dimension values
+      map to explicit key-zero Unknown members.
+    columns:
+      - name: pickup_zone_key
+        description: Pickup role of dim_zone; zero when the source location is unresolved.
+      - name: dropoff_zone_key
+        description: Dropoff role of dim_zone; zero when the source location is unresolved.
+      - name: vendor_key
+        description: Vendor dimension key; zero when the source code is unresolved.
+      - name: pickup_date_key
+        description: Pickup date dimension key; zero when pickup datetime is null.
+      - name: dropoff_date_key
+        description: Dropoff date dimension key; zero when dropoff datetime is null.
+      - name: rate_code_id
+        description: Original TLC rate code, preserved even when unmapped.
+      - name: rate_code_name
+        description: Seed-mapped TLC rate name or Unknown.
+      - name: payment_type
+        description: Original TLC payment code, preserved even when unmapped.
+      - name: payment_type_name
+        description: Seed-mapped TLC payment description or Unknown.
+      - name: source_file_id
+        description: Immutable source-file version and incremental boundary.
+        data_tests:
+          - not_null
+      - name: source_row_number
+        description: Deterministic row position within the source file.
+        data_tests:
+          - not_null
+      - name: pipeline_run_id
+        description: Ingestion run responsible for the source row.
+        data_tests:
+          - not_null
