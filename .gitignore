@@ -39,6 +39,7 @@ target/
 logs/
 
 # Airflow/local runtime artifacts
+.airflow/
 airflow.db
 airflow.cfg
 standalone_admin_password.txt
