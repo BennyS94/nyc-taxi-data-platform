@@ -2,12 +2,13 @@
 
 from taxi_pipeline.sources.contracts import SourceContractError
 from taxi_pipeline.sources.models import SourceFileMetadata, SourcePartition
-from taxi_pipeline.sources.tlc import taxi_zone_source, yellow_trip_source
+from taxi_pipeline.sources.tlc import green_trip_source, taxi_zone_source, yellow_trip_source
 
 __all__ = [
     "SourceContractError",
     "SourceFileMetadata",
     "SourcePartition",
+    "green_trip_source",
     "taxi_zone_source",
     "yellow_trip_source",
 ]

@@ -32,6 +32,26 @@ def yellow_trip_source(year: int, month: int) -> SourcePartition:
 yellow_source = yellow_trip_source
 
 
+def green_trip_source(year: int, month: int) -> SourcePartition:
+    """Resolve one monthly Green Taxi source without performing network access."""
+    if not 1000 <= year <= 9999:
+        raise ValueError("year must be a four-digit positive integer")
+    if not 1 <= month <= 12:
+        raise ValueError("month must be between 1 and 12")
+    return SourcePartition(
+        dataset_name="green_tripdata",
+        service_type="green",
+        year=year,
+        month=month,
+        partition_key=f"green/{year:04}/{month:02}",
+        source_url=(
+            f"{TLC_BASE_URL}/trip-data/green_tripdata_{year:04}-{month:02}.parquet"
+        ),
+        landing_path=f"data/landing/green/{year:04}/{month:02}.parquet",
+        source_format="parquet",
+    )
+
+
 def taxi_zone_source() -> SourcePartition:
     """Resolve the non-partitioned Taxi Zone Lookup source."""
     return SourcePartition(

@@ -33,10 +33,28 @@ def test_source_partition_metadata():
     assert zones.source_format == "csv"
 
 
+def test_green_source_partition_metadata():
+    green = tlc.green_trip_source(2025, 1)
+    assert green.dataset_name == "green_tripdata"
+    assert green.service_type == "green"
+    assert green.partition_key == "green/2025/01"
+    assert green.source_url == (
+        "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2025-01.parquet"
+    )
+    assert green.landing_path == "data/landing/green/2025/01.parquet"
+    assert green.source_format == "parquet"
+
+
 @pytest.mark.parametrize(("year", "month"), [(2025, 0), (2025, 13), (999, 1)])
 def test_invalid_yellow_partition_is_rejected(year, month):
     with pytest.raises(ValueError):
         tlc.yellow_trip_source(year, month)
+
+
+@pytest.mark.parametrize(("year", "month"), [(2025, 0), (2025, 13), (999, 1)])
+def test_invalid_green_partition_is_rejected(year, month):
+    with pytest.raises(ValueError):
+        tlc.green_trip_source(year, month)
 
 
 def test_download_reuse_and_identity(tmp_path, monkeypatch):
