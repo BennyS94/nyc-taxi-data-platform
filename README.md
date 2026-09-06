@@ -126,6 +126,27 @@ The committed dbt tests enforce lineage integrity, per-source Yellow grain, acti
 Zone version cardinality, and active reference uniqueness. Generated dbt artifacts remain
 ignored.
 
+## Dimensional warehouse
+
+Phase 08 extends dbt with canonical and enriched intermediate views, then builds a small
+analytics-ready warehouse in `marts`. The warehouse contains date, zone, and vendor
+dimensions plus `fct_trips`; the same zone dimension serves the pickup and dropoff roles.
+Every dimension has an explicit key-zero `Unknown` member, so unresolved references keep
+their fact row instead of being filtered.
+
+Small version-controlled seeds provide TLC vendor, rate-code, and payment-type names. The
+fact preserves the original numeric codes and source-file, source-row, and pipeline-run
+lineage. Normal dbt builds process only loaded `source_file_id` values not already present
+in the incremental fact, while `dbt build --full-refresh` remains available for model
+changes. No business anomalies are removed by these transformations.
+
+From `dbt/taxi_analytics`, build the complete warehouse with:
+
+```bash
+dbt seed
+dbt build
+```
+
 ## PostgreSQL setup
 
 Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
