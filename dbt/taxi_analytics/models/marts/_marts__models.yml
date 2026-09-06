@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: dim_zone
+    description: >-
+      Taxi Zone dimension at one row per TLC location plus the key-zero Unknown member.
+      The stable TLC location ID is reused as the known zone key; this one dimension
+      serves both pickup and dropoff roles.
+    columns:
+      - name: zone_key
+        description: Location ID for known zones and zero for Unknown.
+        data_tests:
+          - not_null
+          - unique
+      - name: location_id
+        description: TLC LocationID; null only for the Unknown member.
+        data_tests:
+          - unique
+      - name: borough
+        description: Source borough, or Unknown for the fallback member.
+      - name: zone_name
+        description: Source zone name, or Unknown for the fallback member.
+      - name: service_zone
+        description: Source service zone; null for the fallback member when unavailable.
+
+  - name: dim_vendor
+    description: >-
+      Current TLC vendor mapping at one row per documented vendor plus the key-zero
+      Unknown member. Vendor IDs are stable known keys and no history is tracked.
+    columns:
+      - name: vendor_key
+        description: TLC vendor ID for known vendors and zero for Unknown.
+        data_tests:
+          - not_null
+          - unique
+      - name: vendor_id
+        description: TLC vendor code; null for the Unknown member.
+      - name: vendor_name
+        description: TLC-documented provider name or Unknown.
+
+  - name: dim_date
+    description: >-
+      Calendar dimension over distinct pickup and dropoff dates observed in active
+      canonical rows, plus the key-zero Unknown member. It is not a min/max date spine.
+    columns:
+      - name: date_key
+        description: YYYYMMDD integer for known dates and zero for Unknown.
+        data_tests:
+          - not_null
+          - unique
+      - name: full_date
+        description: Observed calendar date; null for the Unknown member.
+      - name: day_of_week
+        description: ISO weekday number from Monday 1 through Sunday 7.
+      - name: is_weekend
+        description: True for Saturday and Sunday; null for the Unknown member.
