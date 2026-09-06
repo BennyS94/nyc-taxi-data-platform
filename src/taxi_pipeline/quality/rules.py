@@ -1,4 +1,4 @@
-"""Explicit quality-rule catalog for raw Yellow Taxi data."""
+"""Explicit service-aware quality-rule catalogs for raw trip data."""
 
 from taxi_pipeline.quality.models import QualityRule, QualitySeverity
 
@@ -47,11 +47,30 @@ YELLOW_RULES = (
     ),
 )
 
-RULES_BY_NAME = {rule.name: rule for rule in YELLOW_RULES}
+GREEN_RULES = tuple(
+    rule
+    for rule in YELLOW_RULES
+    if rule.name not in {"negative_airport_fee", "airport_fee_null_rate"}
+) + (
+    _warning("negative_ehail_fee", "E-hail fee is negative."),
+    _info("ehail_fee_null_rate", "E-hail fee is null."),
+    _warning("unexpected_trip_type", "Trip type is outside the documented Green domain."),
+)
+
+RULES_BY_DATASET = {
+    "yellow_tripdata": YELLOW_RULES,
+    "green_tripdata": GREEN_RULES,
+}
 
 DOMAIN_VALUES = {
     "unexpected_vendor_id": ("vendor_id", (1, 2, 6, 7)),
     "unexpected_rate_code": ("rate_code_id", (1, 2, 3, 4, 5, 6, 99)),
     "unexpected_store_and_fwd_flag": ("store_and_fwd_flag", ("N", "Y")),
     "unexpected_payment_type": ("payment_type", (0, 1, 2, 3, 4, 5)),
+}
+
+GREEN_DOMAIN_VALUES = {
+    **DOMAIN_VALUES,
+    "unexpected_payment_type": ("payment_type", (1, 2, 3, 4, 5, 6)),
+    "unexpected_trip_type": ("trip_type", (1, 2)),
 }

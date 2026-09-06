@@ -5,19 +5,19 @@ from datetime import date
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
-from taxi_pipeline.database.models import TaxiZone, YellowTrip
+from taxi_pipeline.database.models import TaxiZone
 from taxi_pipeline.quality.models import QualityMeasurement
-from taxi_pipeline.quality.rules import DOMAIN_VALUES
 
 
 def scalar_measurements(
     session: Session,
+    trip_model,
     source_file_id: int,
     source_year: int,
     source_month: int,
 ) -> tuple[int, dict[str, QualityMeasurement]]:
     """Evaluate temporal, numeric, zero, and null checks in one raw-table scan."""
-    trip = YellowTrip
+    trip = trip_model
     start = date(source_year, source_month, 1)
     end = date(source_year + (source_month == 12), source_month % 12 + 1, 1)
     conditions = {
@@ -35,7 +35,6 @@ def scalar_measurements(
         "negative_tolls_amount": trip.tolls_amount < 0,
         "negative_improvement_surcharge": trip.improvement_surcharge < 0,
         "negative_congestion_surcharge": trip.congestion_surcharge < 0,
-        "negative_airport_fee": trip.airport_fee < 0,
         "negative_cbd_congestion_fee": trip.cbd_congestion_fee < 0,
         "zero_trip_distance": trip.trip_distance == 0,
         "zero_passenger_count": trip.passenger_count == 0,
@@ -43,8 +42,13 @@ def scalar_measurements(
         "rate_code_null_rate": trip.rate_code_id.is_(None),
         "store_and_fwd_null_rate": trip.store_and_fwd_flag.is_(None),
         "congestion_surcharge_null_rate": trip.congestion_surcharge.is_(None),
-        "airport_fee_null_rate": trip.airport_fee.is_(None),
     }
+    if hasattr(trip, "airport_fee"):
+        conditions["negative_airport_fee"] = trip.airport_fee < 0
+        conditions["airport_fee_null_rate"] = trip.airport_fee.is_(None)
+    if hasattr(trip, "ehail_fee"):
+        conditions["negative_ehail_fee"] = trip.ehail_fee < 0
+        conditions["ehail_fee_null_rate"] = trip.ehail_fee.is_(None)
     statement = select(
         func.count().label("rows_checked"),
         *(func.count().filter(condition).label(name) for name, condition in conditions.items()),
@@ -59,17 +63,19 @@ def scalar_measurements(
 
 def domain_measurements(
     session: Session,
+    trip_model,
+    domain_values,
     source_file_id: int,
     rows_checked: int,
 ) -> dict[str, QualityMeasurement]:
     """Evaluate documented domains and retain compact unexpected-value counts."""
     measurements = {}
-    for check_name, (attribute_name, allowed_values) in DOMAIN_VALUES.items():
-        column = getattr(YellowTrip, attribute_name)
+    for check_name, (attribute_name, allowed_values) in domain_values.items():
+        column = getattr(trip_model, attribute_name)
         rows = session.execute(
             select(column.label("value"), func.count().label("count"))
             .where(
-                YellowTrip.source_file_id == source_file_id,
+                trip_model.source_file_id == source_file_id,
                 column.is_not(None),
                 column.not_in(allowed_values),
             )
@@ -87,6 +93,7 @@ def domain_measurements(
 
 def zone_measurements(
     session: Session,
+    trip_model,
     source_file_id: int,
     zone_source_file_id: int,
     rows_checked: int,
@@ -98,33 +105,33 @@ def zone_measurements(
         select(
             func.count()
             .filter(
-                YellowTrip.pickup_location_id.is_not(None),
+                trip_model.pickup_location_id.is_not(None),
                 pickup_zone.location_id.is_(None),
             )
             .label("unknown_pickup_zone"),
             func.count()
             .filter(
-                YellowTrip.dropoff_location_id.is_not(None),
+                trip_model.dropoff_location_id.is_not(None),
                 dropoff_zone.location_id.is_(None),
             )
             .label("unknown_dropoff_zone"),
         )
-        .select_from(YellowTrip)
+        .select_from(trip_model)
         .outerjoin(
             pickup_zone,
             and_(
                 pickup_zone.source_file_id == zone_source_file_id,
-                pickup_zone.location_id == YellowTrip.pickup_location_id,
+                pickup_zone.location_id == trip_model.pickup_location_id,
             ),
         )
         .outerjoin(
             dropoff_zone,
             and_(
                 dropoff_zone.source_file_id == zone_source_file_id,
-                dropoff_zone.location_id == YellowTrip.dropoff_location_id,
+                dropoff_zone.location_id == trip_model.dropoff_location_id,
             ),
         )
-        .where(YellowTrip.source_file_id == source_file_id)
+        .where(trip_model.source_file_id == source_file_id)
     ).mappings().one()
     return {
         name: QualityMeasurement(rows_checked=rows_checked, rows_failed=int(row[name]))
@@ -134,19 +141,20 @@ def zone_measurements(
 
 def duplicate_measurement(
     session: Session,
+    trip_model,
     source_file_id: int,
     rows_checked: int,
 ) -> QualityMeasurement:
     """Count exact duplicate groups using equality across every source field."""
     source_columns = tuple(
         column
-        for column in YellowTrip.__table__.columns
+        for column in trip_model.__table__.columns
         if not column.name.startswith("_")
     )
     group_size = func.count().label("group_size")
     duplicate_groups = (
         select(group_size)
-        .where(YellowTrip.source_file_id == source_file_id)
+        .where(trip_model.source_file_id == source_file_id)
         .group_by(*source_columns)
         .having(func.count() > 1)
         .subquery()

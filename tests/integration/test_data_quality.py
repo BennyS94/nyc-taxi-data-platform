@@ -6,6 +6,7 @@ from sqlalchemy import func, inspect, select, update
 
 from taxi_pipeline.database.models import (
     DataQualityResult,
+    GreenTrip,
     PipelineRun,
     SourceFile,
     TaxiZone,
@@ -156,6 +157,85 @@ def quality_fixture(db_session):
     return yellow_run, yellow_source
 
 
+@pytest.fixture
+def green_quality_fixture(db_session):
+    token = uuid4().hex
+    zone_source = _source(
+        db_session,
+        dataset_name="taxi_zone_lookup",
+        partition_key=f"reference/taxi_zones/green/{token}",
+    )
+    zone_run = _run(db_session, zone_source)
+    db_session.add(
+        TaxiZone(
+            source_file_id=zone_source.source_file_id,
+            source_row_number=1,
+            pipeline_run_id=zone_run.run_id,
+            ingested_at=datetime.now(UTC),
+            location_id=1,
+            borough="Test",
+            zone="Known",
+            service_zone="Test Zone",
+        )
+    )
+    green_source = _source(
+        db_session,
+        dataset_name="green_tripdata",
+        partition_key=f"green/2025/01/{token}",
+        service_type="green",
+        year=2025,
+        month=1,
+    )
+    green_run = _run(db_session, green_source)
+    common = {
+        "vendor_id": 1,
+        "pickup_datetime": datetime.fromisoformat("2025-01-10T10:00:00"),
+        "dropoff_datetime": datetime.fromisoformat("2025-01-10T10:10:00"),
+        "store_and_fwd_flag": "N",
+        "rate_code_id": 1,
+        "pickup_location_id": 1,
+        "dropoff_location_id": 1,
+        "passenger_count": 1,
+        "trip_distance": 1.0,
+        "fare_amount": 10.0,
+        "extra": 0.0,
+        "mta_tax": 0.5,
+        "tip_amount": 2.0,
+        "tolls_amount": 0.0,
+        "ehail_fee": None,
+        "improvement_surcharge": 1.0,
+        "total_amount": 13.5,
+        "payment_type": 1,
+        "trip_type": 1,
+        "congestion_surcharge": 0.0,
+        "cbd_congestion_fee": 0.75,
+    }
+    rows = [
+        common,
+        common,
+        {
+            **common,
+            "pickup_location_id": 999,
+            "fare_amount": -5.0,
+            "ehail_fee": -1.0,
+            "trip_type": 3,
+        },
+        {**common, "trip_type": None},
+    ]
+    for row_number, values in enumerate(rows, start=1):
+        db_session.add(
+            GreenTrip(
+                source_file_id=green_source.source_file_id,
+                source_row_number=row_number,
+                pipeline_run_id=green_run.run_id,
+                ingested_at=datetime.now(UTC),
+                **values,
+            )
+        )
+    db_session.flush()
+    return green_run, green_source
+
+
 def _results_by_name(db_session, run_id):
     return {
         result.check_name: result
@@ -226,6 +306,28 @@ def test_quality_rerun_upserts_same_check_rows(db_session, quality_fixture):
         .select_from(DataQualityResult)
         .where(DataQualityResult.run_id == run.run_id)
     ) == 27
+
+
+def test_green_quality_reuses_common_rules_and_checks_trip_type(
+    db_session, green_quality_fixture
+):
+    run, _ = green_quality_fixture
+
+    summary = run_quality_checks(db_session, run.run_id)
+    results = _results_by_name(db_session, run.run_id)
+
+    assert summary.rows_checked == 4
+    assert summary.check_count == len(results) == 28
+    assert results["negative_fare_amount"].rows_failed == 1
+    assert results["negative_ehail_fee"].rows_failed == 1
+    assert results["ehail_fee_null_rate"].rows_failed == 3
+    assert results["unexpected_trip_type"].severity == QualitySeverity.WARNING.value
+    assert results["unexpected_trip_type"].rows_failed == 1
+    assert results["unexpected_trip_type"].details == {
+        "unexpected_values": [{"value": 3, "count": 1}]
+    }
+    assert results["unknown_pickup_zone"].rows_failed == 1
+    assert "negative_airport_fee" not in results
 
 
 def test_invalid_target_run_is_rejected(db_session, quality_fixture):

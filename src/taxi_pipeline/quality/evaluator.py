@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 
 from taxi_pipeline.database.models import (
     DataQualityResult,
+    GreenTrip,
     PipelineRun,
     SourceFile,
     TaxiZone,
+    YellowTrip,
 )
 from taxi_pipeline.metadata.statuses import RunStatus, SourceStatus
 from taxi_pipeline.quality.models import (
@@ -25,7 +27,16 @@ from taxi_pipeline.quality.queries import (
     scalar_measurements,
     zone_measurements,
 )
-from taxi_pipeline.quality.rules import RULES_BY_NAME, YELLOW_RULES
+from taxi_pipeline.quality.rules import (
+    DOMAIN_VALUES,
+    GREEN_DOMAIN_VALUES,
+    RULES_BY_DATASET,
+)
+
+QUALITY_CONFIG = {
+    "yellow_tripdata": (YellowTrip, DOMAIN_VALUES),
+    "green_tripdata": (GreenTrip, GREEN_DOMAIN_VALUES),
+}
 
 
 class QualityEvaluationError(ValueError):
@@ -44,7 +55,7 @@ def find_latest_successful_run(
         select(PipelineRun.run_id)
         .join(SourceFile, SourceFile.source_file_id == PipelineRun.source_file_id)
         .where(
-            PipelineRun.dataset_name == "yellow_tripdata",
+            PipelineRun.dataset_name == f"{service_type}_tripdata",
             PipelineRun.service_type == service_type,
             PipelineRun.source_year == year,
             PipelineRun.source_month == month,
@@ -62,30 +73,45 @@ def find_latest_successful_run(
 
 
 def run_quality_checks(session: Session, run_id: int) -> QualityRunSummary:
-    """Evaluate and upsert all raw Yellow quality checks for one successful run."""
+    """Evaluate and upsert service-aware raw trip quality checks."""
     run, source = _validated_target(session, run_id)
+    trip_model, domain_values = QUALITY_CONFIG[source.dataset_name]
+    rules = RULES_BY_DATASET[source.dataset_name]
+    rules_by_name = {rule.name: rule for rule in rules}
     zone_source_file_id = _loaded_zone_source_id(session)
     rows_checked, measurements = scalar_measurements(
         session,
+        trip_model,
         source.source_file_id,
         source.source_year,
         source.source_month,
     )
-    measurements.update(domain_measurements(session, source.source_file_id, rows_checked))
     measurements.update(
-        zone_measurements(session, source.source_file_id, zone_source_file_id, rows_checked)
+        domain_measurements(
+            session, trip_model, domain_values, source.source_file_id, rows_checked
+        )
+    )
+    measurements.update(
+        zone_measurements(
+            session,
+            trip_model,
+            source.source_file_id,
+            zone_source_file_id,
+            rows_checked,
+        )
     )
     measurements["exact_duplicate_source_rows"] = duplicate_measurement(
         session,
+        trip_model,
         source.source_file_id,
         rows_checked,
     )
-    if set(measurements) != set(RULES_BY_NAME):
+    if set(measurements) != set(rules_by_name):
         raise QualityEvaluationError("Quality rule catalog and measurements are inconsistent")
 
     executed_at = datetime.now(UTC)
-    for rule in YELLOW_RULES:
-        _upsert_result(session, run_id, rule.name, measurements[rule.name], executed_at)
+    for rule in rules:
+        _upsert_result(session, run_id, rule, measurements[rule.name], executed_at)
     session.flush()
 
     warning_count = _violated_count(session, run_id, QualitySeverity.WARNING)
@@ -97,7 +123,7 @@ def run_quality_checks(session: Session, run_id: int) -> QualityRunSummary:
         partition_key=source.partition_key,
         run_id=run_id,
         rows_checked=rows_checked,
-        check_count=len(YELLOW_RULES),
+        check_count=len(rules),
         warnings_violated=warning_count,
         errors_violated=error_count,
     )
@@ -111,8 +137,8 @@ def _validated_target(session: Session, run_id: int) -> tuple[PipelineRun, Sourc
         raise QualityEvaluationError(
             f"Run {run_id} has status {run.status}; quality requires succeeded"
         )
-    if run.dataset_name != "yellow_tripdata" or run.source_file_id is None:
-        raise QualityEvaluationError(f"Run {run_id} is not a loaded Yellow ingestion run")
+    if run.dataset_name not in QUALITY_CONFIG or run.source_file_id is None:
+        raise QualityEvaluationError(f"Run {run_id} is not a supported loaded trip ingestion run")
     source = session.get(SourceFile, run.source_file_id)
     if source is None or source.status != SourceStatus.LOADED.value:
         raise QualityEvaluationError(f"Run {run_id} does not reference a loaded source")
@@ -146,11 +172,10 @@ def _loaded_zone_source_id(session: Session) -> int:
 def _upsert_result(
     session: Session,
     run_id: int,
-    check_name: str,
+    rule,
     measurement: QualityMeasurement,
     executed_at: datetime,
 ) -> None:
-    rule = RULES_BY_NAME[check_name]
     status = (
         QualityStatus.PASSED if measurement.rows_failed == 0 else QualityStatus.VIOLATED
     )
@@ -159,7 +184,7 @@ def _upsert_result(
     )
     values = {
         "run_id": run_id,
-        "check_name": check_name,
+        "check_name": rule.name,
         "severity": rule.severity.value,
         "status": status.value,
         "rows_checked": measurement.rows_checked,
