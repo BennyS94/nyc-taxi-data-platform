@@ -6,6 +6,7 @@ from taxi_pipeline.database.base import Base
 from taxi_pipeline.database.engine import get_engine
 from taxi_pipeline.database.models import (
     DataQualityResult,
+    GreenTrip,
     PipelineRun,
     SourceFile,
     TaxiZone,
@@ -18,12 +19,14 @@ def test_database_metadata_contains_application_owned_tables():
         "ops.source_files",
         "ops.pipeline_runs",
         "raw.yellow_trips",
+        "raw.green_trips",
         "raw.taxi_zones",
         "ops.data_quality_results",
     }
     assert SourceFile.__table__.schema == "ops"
     assert PipelineRun.__table__.schema == "ops"
     assert YellowTrip.__table__.schema == "raw"
+    assert GreenTrip.__table__.schema == "raw"
     assert TaxiZone.__table__.schema == "raw"
     assert DataQualityResult.__table__.schema == "ops"
 
@@ -71,7 +74,40 @@ def test_yellow_trip_preserves_source_names_types_and_nullability():
     assert not table.c.tpep_dropoff_datetime.type.timezone
 
 
-@pytest.mark.parametrize("model", [YellowTrip, TaxiZone])
+def test_green_trip_preserves_profiled_source_contract():
+    table = GreenTrip.__table__
+    expected_types = {
+        "VendorID": Integer,
+        "lpep_pickup_datetime": TIMESTAMP,
+        "lpep_dropoff_datetime": TIMESTAMP,
+        "store_and_fwd_flag": Text,
+        "RatecodeID": BigInteger,
+        "PULocationID": Integer,
+        "DOLocationID": Integer,
+        "passenger_count": BigInteger,
+        "trip_distance": Float,
+        "fare_amount": Float,
+        "extra": Float,
+        "mta_tax": Float,
+        "tip_amount": Float,
+        "tolls_amount": Float,
+        "ehail_fee": Float,
+        "improvement_surcharge": Float,
+        "total_amount": Float,
+        "payment_type": BigInteger,
+        "trip_type": BigInteger,
+        "congestion_surcharge": Float,
+        "cbd_congestion_fee": Float,
+    }
+    for name, type_ in expected_types.items():
+        assert name in table.c
+        assert isinstance(table.c[name].type, type_)
+        assert table.c[name].nullable
+    assert not table.c.lpep_pickup_datetime.type.timezone
+    assert not table.c.lpep_dropoff_datetime.type.timezone
+
+
+@pytest.mark.parametrize("model", [YellowTrip, GreenTrip, TaxiZone])
 def test_raw_lineage_contract(model):
     table = model.__table__
     assert {column.name for column in table.primary_key.columns} == {

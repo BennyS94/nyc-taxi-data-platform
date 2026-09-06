@@ -59,7 +59,9 @@ def test_schemas_and_tables_exist(postgres_engine):
     database = inspect(postgres_engine)
     assert {"ops", "raw"}.issubset(database.get_schema_names())
     assert {"source_files", "pipeline_runs"}.issubset(database.get_table_names(schema="ops"))
-    assert {"yellow_trips", "taxi_zones"}.issubset(database.get_table_names(schema="raw"))
+    assert {"yellow_trips", "green_trips", "taxi_zones"}.issubset(
+        database.get_table_names(schema="raw")
+    )
 
 
 def test_source_file_version_uniqueness(connection):
