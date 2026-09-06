@@ -7,7 +7,8 @@ from pathlib import Path
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
-from taxi_pipeline.database.models import TaxiZone, YellowTrip
+from taxi_pipeline.database.models import GreenTrip, TaxiZone, YellowTrip
+from taxi_pipeline.ingestion.green import load_green
 from taxi_pipeline.ingestion.models import LoadCounts
 from taxi_pipeline.ingestion.taxi_zones import load_taxi_zones
 from taxi_pipeline.ingestion.yellow import load_yellow
@@ -135,6 +136,9 @@ def _load_and_count(
     if metadata.dataset_name == "yellow_tripdata":
         counts = load_yellow(session, path, **common)
         model = YellowTrip
+    elif metadata.dataset_name == "green_tripdata":
+        counts = load_green(session, path, **common)
+        model = GreenTrip
     elif metadata.dataset_name == "taxi_zone_lookup":
         counts = load_taxi_zones(session, path, **common)
         model = TaxiZone

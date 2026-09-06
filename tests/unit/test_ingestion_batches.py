@@ -4,9 +4,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
+from taxi_pipeline.ingestion.green import iter_green_batches
 from taxi_pipeline.ingestion.taxi_zones import iter_taxi_zone_batches
 from taxi_pipeline.ingestion.yellow import iter_yellow_batches
 from taxi_pipeline.sources.contracts import (
+    GREEN_BASELINE_FIELDS,
+    GREEN_FIELD_TYPES,
     YELLOW_ADDITIVE_FIELD,
     YELLOW_BASELINE_FIELDS,
     YELLOW_FIELD_TYPES,
@@ -71,6 +74,41 @@ def test_yellow_batch_size_must_be_positive(tmp_path):
                 batch_size=0,
             )
         )
+
+
+def test_green_batches_preserve_profiled_fields_and_lineage(tmp_path):
+    path = tmp_path / "green.parquet"
+    rows = 3
+    arrays = []
+    for name in GREEN_BASELINE_FIELDS:
+        data_type = GREEN_FIELD_TYPES[name]
+        if pa.types.is_timestamp(data_type):
+            values = [datetime.fromisoformat("2025-01-02")] * rows
+        elif pa.types.is_string(data_type) or pa.types.is_large_string(data_type):
+            values = ["N"] * rows
+        elif pa.types.is_integer(data_type):
+            values = [1, 2, None]
+        else:
+            values = [1.0, None, 3.0]
+        arrays.append(pa.array(values, type=data_type))
+    schema = pa.schema([pa.field(name, GREEN_FIELD_TYPES[name]) for name in GREEN_BASELINE_FIELDS])
+    pq.write_table(pa.Table.from_arrays(arrays, schema=schema), path)
+    ingested_at = datetime.now(UTC)
+
+    batches = list(
+        iter_green_batches(
+            path,
+            source_file_id=13,
+            pipeline_run_id=17,
+            ingested_at=ingested_at,
+            batch_size=2,
+        )
+    )
+
+    assert [batch.start_row_number for batch in batches] == [1, 3]
+    rows = [row for batch in batches for row in batch.rows]
+    assert [row[22] for row in rows] == [1, 2, 3]
+    assert all(row[21] == 13 and row[23] == 17 and row[24] == ingested_at for row in rows)
 
 
 def test_taxi_zone_batches_follow_csv_order(tmp_path):

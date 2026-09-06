@@ -17,7 +17,7 @@ from taxi_pipeline.quality import (
     find_latest_successful_run,
     run_quality_checks,
 )
-from taxi_pipeline.sources import taxi_zone_source, yellow_trip_source
+from taxi_pipeline.sources import green_trip_source, taxi_zone_source, yellow_trip_source
 from taxi_pipeline.sources.models import SourceFileMetadata, SourcePartition
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -31,19 +31,19 @@ def build_parser() -> argparse.ArgumentParser:
     source_commands = source.add_subparsers(dest="source_command", required=True)
 
     fetch = source_commands.add_parser("fetch", help="fetch a monthly trip source")
-    fetch.add_argument("--service", choices=("yellow",), required=True)
+    fetch.add_argument("--service", choices=("yellow", "green"), required=True)
     fetch.add_argument("--year", type=int, required=True)
     fetch.add_argument("--month", type=int, required=True)
 
     source_commands.add_parser("fetch-zones", help="fetch the Taxi Zone Lookup")
     register = source_commands.add_parser("register", help="register a monthly source")
-    register.add_argument("--service", choices=("yellow",), required=True)
+    register.add_argument("--service", choices=("yellow", "green"), required=True)
     register.add_argument("--year", type=int, required=True)
     register.add_argument("--month", type=int, required=True)
     source_commands.add_parser("register-zones", help="register the Taxi Zone Lookup")
 
     ingest = commands.add_parser("ingest", help="ingest a monthly source into raw")
-    ingest.add_argument("--service", choices=("yellow",), required=True)
+    ingest.add_argument("--service", choices=("yellow", "green"), required=True)
     ingest.add_argument("--year", type=int, required=True)
     ingest.add_argument("--month", type=int, required=True)
     commands.add_parser("ingest-zones", help="ingest the Taxi Zone Lookup into raw")
@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     quality = commands.add_parser("quality", help="evaluate raw data quality")
     quality_commands = quality.add_subparsers(dest="quality_command", required=True)
     quality_run = quality_commands.add_parser("run", help="run quality checks for a month")
-    quality_run.add_argument("--service", choices=("yellow",), required=True)
+    quality_run.add_argument("--service", choices=("yellow", "green"), required=True)
     quality_run.add_argument("--year", type=int, required=True)
     quality_run.add_argument("--month", type=int, required=True)
     return parser
@@ -95,7 +95,8 @@ def _source_from_args(args: argparse.Namespace) -> SourcePartition:
         "register-zones",
     }:
         return taxi_zone_source()
-    return yellow_trip_source(args.year, args.month)
+    resolver = green_trip_source if args.service == "green" else yellow_trip_source
+    return resolver(args.year, args.month)
 
 
 def _register_metadata(metadata: SourceFileMetadata) -> SourceRegistrationResult:

@@ -74,6 +74,27 @@ def test_taxi_zone_cli_reports_valid_structure(monkeypatch, capsys):
     assert "Structure: valid" in capsys.readouterr().out
 
 
+def test_green_source_cli_uses_green_partition(monkeypatch, capsys):
+    observed = {}
+    monkeypatch.setattr(cli, "ensure_local", lambda source, root: observed.setdefault("source", source))
+    monkeypatch.setattr(
+        cli,
+        "inspect_source",
+        lambda source, root: metadata(
+            dataset_name="green_tripdata",
+            service_type="green",
+            partition_key="green/2025/01",
+            landing_path="data/landing/green/2025/01.parquet",
+            row_count=48_326,
+            schema_version="green_v1",
+        ),
+    )
+
+    assert cli.main(["source", "fetch", "--service", "green", "--year", "2025", "--month", "1"]) == 0
+    assert observed["source"].partition_key == "green/2025/01"
+    assert "Schema: green_v1" in capsys.readouterr().out
+
+
 def test_source_cli_returns_nonzero_on_contract_failure(monkeypatch, capsys):
     monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
 

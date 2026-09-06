@@ -8,12 +8,15 @@ import pytest
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from taxi_pipeline.database.models import PipelineRun, SourceFile, TaxiZone, YellowTrip
+from taxi_pipeline.database.models import GreenTrip, PipelineRun, SourceFile, TaxiZone, YellowTrip
 from taxi_pipeline.ingestion import IngestionError, ingest_source
+from taxi_pipeline.ingestion import green as green_loader
 from taxi_pipeline.ingestion import yellow as yellow_loader
 from taxi_pipeline.landing.metadata import inspect_source
 from taxi_pipeline.metadata.statuses import RunStatus, SkipReason, SourceStatus
 from taxi_pipeline.sources.contracts import (
+    GREEN_BASELINE_FIELDS,
+    GREEN_FIELD_TYPES,
     YELLOW_ADDITIVE_FIELD,
     YELLOW_BASELINE_FIELDS,
     YELLOW_FIELD_TYPES,
@@ -30,8 +33,8 @@ def source_factory(postgres_engine, tmp_path):
     def create(source_format: str, path, *, service_type="yellow"):
         token = uuid4().hex
         if source_format == "parquet":
-            partition_key = f"yellow/test/{token}"
-            dataset_name = "yellow_tripdata"
+            partition_key = f"{service_type}/test/{token}"
+            dataset_name = f"{service_type}_tripdata"
         else:
             partition_key = f"reference/taxi_zones/{token}"
             dataset_name = "taxi_zone_lookup"
@@ -57,6 +60,7 @@ def source_factory(postgres_engine, tmp_path):
         ).all()
         if source_ids:
             session.execute(delete(YellowTrip).where(YellowTrip.source_file_id.in_(source_ids)))
+            session.execute(delete(GreenTrip).where(GreenTrip.source_file_id.in_(source_ids)))
             session.execute(delete(TaxiZone).where(TaxiZone.source_file_id.in_(source_ids)))
             session.execute(delete(PipelineRun).where(PipelineRun.source_file_id.in_(source_ids)))
             session.execute(delete(SourceFile).where(SourceFile.source_file_id.in_(source_ids)))
@@ -92,6 +96,26 @@ def write_yellow(path, *, include_cbd: bool, anomaly: bool = False):
     arrays = [pa.array(values[name], type=YELLOW_FIELD_TYPES[name]) for name in names]
     pq.write_table(pa.Table.from_arrays(arrays, schema=schema), path, row_group_size=2)
     return row_count
+
+
+def write_green(path, *, rows: int = 3):
+    values = {}
+    for name in GREEN_BASELINE_FIELDS:
+        data_type = GREEN_FIELD_TYPES[name]
+        if pa.types.is_timestamp(data_type):
+            values[name] = [datetime.fromisoformat("2025-01-02")] * rows
+        elif pa.types.is_string(data_type) or pa.types.is_large_string(data_type):
+            values[name] = ["N", "Y", None]
+        elif pa.types.is_integer(data_type):
+            values[name] = [1, 2, None]
+        else:
+            values[name] = [1.0, None, -3.0]
+    schema = pa.schema(
+        [pa.field(name, GREEN_FIELD_TYPES[name]) for name in GREEN_BASELINE_FIELDS]
+    )
+    arrays = [pa.array(values[name], type=GREEN_FIELD_TYPES[name]) for name in GREEN_BASELINE_FIELDS]
+    pq.write_table(pa.Table.from_arrays(arrays, schema=schema), path, row_group_size=2)
+    return rows
 
 
 def raw_count(session, model, source_file_id):
@@ -177,6 +201,75 @@ def test_partial_copy_failure_rolls_back_and_retry_uses_new_run(
             .order_by(PipelineRun.run_id)
         ).all()
         assert raw_count(session, YellowTrip, retry.source_file_id) == 3
+    assert retry.run_id != failed_run.run_id
+    assert [run.status for run in runs] == [RunStatus.FAILED.value, RunStatus.SUCCEEDED.value]
+
+
+def test_green_ingestion_preserves_fields_lineage_and_idempotency(
+    postgres_engine, tmp_path, source_factory
+):
+    path = tmp_path / f"green-{uuid4().hex}.parquet"
+    write_green(path)
+    metadata = source_factory("parquet", path, service_type="green")
+
+    first = ingest_source(postgres_engine, metadata, tmp_path, batch_size=2)
+    repeated = ingest_source(postgres_engine, metadata, tmp_path, batch_size=2)
+
+    with Session(postgres_engine) as session:
+        rows = session.scalars(
+            select(GreenTrip)
+            .where(GreenTrip.source_file_id == first.source_file_id)
+            .order_by(GreenTrip.source_row_number)
+        ).all()
+    assert first.status is RunStatus.SUCCEEDED
+    assert first.rows_read == first.rows_loaded == 3
+    assert [row.source_row_number for row in rows] == [1, 2, 3]
+    assert [row.trip_type for row in rows] == [1, 2, None]
+    assert [row.ehail_fee for row in rows] == [1.0, None, -3.0]
+    assert [row.cbd_congestion_fee for row in rows] == [1.0, None, -3.0]
+    assert all(row.pipeline_run_id == first.run_id for row in rows)
+    assert repeated.status is RunStatus.SKIPPED
+    assert repeated.status_reason is SkipReason.ALREADY_LOADED
+
+
+def test_green_partial_copy_failure_rolls_back_and_retries(
+    postgres_engine, tmp_path, source_factory, monkeypatch
+):
+    path = tmp_path / f"green-{uuid4().hex}.parquet"
+    write_green(path)
+    metadata = source_factory("parquet", path, service_type="green")
+    original_copy_rows = green_loader.copy_rows
+    calls = 0
+
+    def fail_after_first_batch(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("controlled Green failure")
+        return original_copy_rows(*args, **kwargs)
+
+    monkeypatch.setattr(green_loader, "copy_rows", fail_after_first_batch)
+    with pytest.raises(IngestionError, match="controlled Green failure"):
+        ingest_source(postgres_engine, metadata, tmp_path, batch_size=2)
+
+    with Session(postgres_engine) as session:
+        source = session.scalar(
+            select(SourceFile).where(SourceFile.partition_key == metadata.partition_key)
+        )
+        failed_run = session.scalar(
+            select(PipelineRun).where(PipelineRun.source_file_id == source.source_file_id)
+        )
+        assert raw_count(session, GreenTrip, source.source_file_id) == 0
+
+    monkeypatch.setattr(green_loader, "copy_rows", original_copy_rows)
+    retry = ingest_source(postgres_engine, metadata, tmp_path, batch_size=2)
+    with Session(postgres_engine) as session:
+        runs = session.scalars(
+            select(PipelineRun)
+            .where(PipelineRun.source_file_id == retry.source_file_id)
+            .order_by(PipelineRun.run_id)
+        ).all()
+        assert raw_count(session, GreenTrip, retry.source_file_id) == 3
     assert retry.run_id != failed_run.run_id
     assert [run.status for run in runs] == [RunStatus.FAILED.value, RunStatus.SUCCEEDED.value]
 
