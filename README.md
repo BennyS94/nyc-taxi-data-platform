@@ -147,6 +147,23 @@ dbt seed
 dbt build
 ```
 
+## Green Taxi integration
+
+Phase 09 adds Green Taxi January 2025 through the same landing, source registry,
+transactional batch/COPY ingestion, and service-aware quality framework used by Yellow.
+The targeted source profile is recorded in
+[`reports/data_profiling/GREEN_2025_01_REPORT.md`](reports/data_profiling/GREEN_2025_01_REPORT.md).
+
+`stg_tlc__green_trips` maps Green source names into the shared canonical contract. The
+canonical model combines Yellow and Green with `UNION ALL`, preserving `service_type`,
+technical lineage, Green `trip_type`, and source anomalies. The incremental fact loads
+new Green source-file IDs without replacing Yellow history. Run the Green path with:
+
+```bash
+python -m taxi_pipeline ingest --service green --year 2025 --month 1
+python -m taxi_pipeline quality run --service green --year 2025 --month 1
+```
+
 ## PostgreSQL setup
 
 Phase 02 provides PostgreSQL 17 through Docker Compose. Alembic manages the `ops` and
