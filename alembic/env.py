@@ -17,6 +17,14 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+ALEMBIC_OWNED_SCHEMAS = {"ops", "raw"}
+
+
+def include_name(name: str | None, type_: str, parent_names: dict[str, str]) -> bool:
+    """Restrict database reflection to application-owned schemas."""
+    if type_ == "schema":
+        return name in ALEMBIC_OWNED_SCHEMAS
+    return True
 
 
 def get_database_url() -> str:
@@ -35,6 +43,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         include_schemas=True,
+        include_name=include_name,
         compare_type=True,
     )
 
@@ -56,6 +65,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             include_schemas=True,
+            include_name=include_name,
             compare_type=True,
         )
 
