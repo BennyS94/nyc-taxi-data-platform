@@ -7,15 +7,18 @@ import pytest
 from taxi_pipeline.landing.metadata import inspect_source
 from taxi_pipeline.profiling.schema import schema_fingerprint
 from taxi_pipeline.sources.contracts import (
+    GREEN_BASELINE_FIELDS,
+    GREEN_FIELD_TYPES,
     TAXI_ZONE_REQUIRED_FIELDS,
     YELLOW_ADDITIVE_FIELD,
     YELLOW_BASELINE_FIELDS,
     YELLOW_FIELD_TYPES,
     SourceContractError,
+    validate_green_schema,
     validate_taxi_zones,
     validate_yellow_schema,
 )
-from taxi_pipeline.sources.tlc import taxi_zone_source, yellow_trip_source
+from taxi_pipeline.sources.tlc import green_trip_source, taxi_zone_source, yellow_trip_source
 
 
 def yellow_schema(*, version: int = 1, missing: str | None = None) -> pa.Schema:
@@ -29,6 +32,11 @@ def write_yellow(path, schema: pa.Schema, rows: int = 2) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     arrays = [pa.array([None] * rows, type=field.type) for field in schema]
     pq.write_table(pa.Table.from_arrays(arrays, schema=schema), path)
+
+
+def green_schema(*, missing: str | None = None) -> pa.Schema:
+    names = [name for name in GREEN_BASELINE_FIELDS if name != missing]
+    return pa.schema([pa.field(name, GREEN_FIELD_TYPES[name]) for name in names])
 
 
 @pytest.mark.parametrize(("version", "expected"), [(1, "yellow_v1"), (2, "yellow_v2")])
@@ -74,6 +82,41 @@ def test_yellow_metadata_is_stable_and_portable(tmp_path):
     assert first.schema_version == "yellow_v2"
     assert first.landing_path == "data/landing/yellow/2025/01.parquet"
     assert str(tmp_path) not in first.landing_path
+
+
+def test_supported_green_schema_and_metadata(tmp_path):
+    source = green_trip_source(2025, 1)
+    path = tmp_path / source.landing_path
+    schema = green_schema()
+    write_yellow(path, schema, rows=3)
+
+    assert validate_green_schema(schema) == "green_v1"
+    metadata = inspect_source(source, tmp_path)
+    _, expected_fingerprint = schema_fingerprint(schema)
+    assert metadata.row_count == 3
+    assert metadata.schema_fingerprint == expected_fingerprint
+    assert metadata.schema_version == "green_v1"
+    assert metadata.landing_path == "data/landing/green/2025/01.parquet"
+
+
+def test_missing_green_baseline_field_is_rejected():
+    with pytest.raises(SourceContractError, match="ehail_fee"):
+        validate_green_schema(green_schema(missing="ehail_fee"))
+
+
+def test_unknown_green_field_is_rejected():
+    schema = green_schema().append(pa.field("unexpected_new_field", pa.int64()))
+    with pytest.raises(SourceContractError, match="unexpected_new_field"):
+        validate_green_schema(schema)
+
+
+def test_green_type_change_is_rejected():
+    fields = [
+        pa.field(field.name, pa.string() if field.name == "trip_type" else field.type)
+        for field in green_schema()
+    ]
+    with pytest.raises(SourceContractError, match="Unsupported type for trip_type"):
+        validate_green_schema(pa.schema(fields))
 
 
 def write_zones(tmp_path, content: str):

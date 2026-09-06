@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 from taxi_pipeline.profiling.schema import schema_fingerprint
 from taxi_pipeline.sources.contracts import (
     SourceContractError,
+    validate_green_schema,
     validate_taxi_zones,
     validate_yellow_schema,
 )
@@ -52,7 +53,12 @@ def inspect_source(source: SourcePartition, root: Path) -> SourceFileMetadata:
     if source.source_format == "parquet":
         parquet = pq.ParquetFile(path)
         schema = parquet.schema_arrow
-        schema_version = validate_yellow_schema(schema)
+        if source.dataset_name == "yellow_tripdata":
+            schema_version = validate_yellow_schema(schema)
+        elif source.dataset_name == "green_tripdata":
+            schema_version = validate_green_schema(schema)
+        else:
+            raise SourceContractError(f"Unsupported Parquet dataset: {source.dataset_name}")
         _, fingerprint = schema_fingerprint(schema)
         row_count = parquet.metadata.num_rows
     elif source.source_format == "csv":

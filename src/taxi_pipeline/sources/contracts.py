@@ -49,6 +49,52 @@ YELLOW_FIELD_TYPES = {
     "Airport_fee": pa.float64(),
     "cbd_congestion_fee": pa.float64(),
 }
+GREEN_BASELINE_FIELDS = (
+    "VendorID",
+    "lpep_pickup_datetime",
+    "lpep_dropoff_datetime",
+    "store_and_fwd_flag",
+    "RatecodeID",
+    "PULocationID",
+    "DOLocationID",
+    "passenger_count",
+    "trip_distance",
+    "fare_amount",
+    "extra",
+    "mta_tax",
+    "tip_amount",
+    "tolls_amount",
+    "ehail_fee",
+    "improvement_surcharge",
+    "total_amount",
+    "payment_type",
+    "trip_type",
+    "congestion_surcharge",
+    "cbd_congestion_fee",
+)
+GREEN_FIELD_TYPES = {
+    "VendorID": pa.int32(),
+    "lpep_pickup_datetime": pa.timestamp("us"),
+    "lpep_dropoff_datetime": pa.timestamp("us"),
+    "store_and_fwd_flag": pa.large_string(),
+    "RatecodeID": pa.int64(),
+    "PULocationID": pa.int32(),
+    "DOLocationID": pa.int32(),
+    "passenger_count": pa.int64(),
+    "trip_distance": pa.float64(),
+    "fare_amount": pa.float64(),
+    "extra": pa.float64(),
+    "mta_tax": pa.float64(),
+    "tip_amount": pa.float64(),
+    "tolls_amount": pa.float64(),
+    "ehail_fee": pa.float64(),
+    "improvement_surcharge": pa.float64(),
+    "total_amount": pa.float64(),
+    "payment_type": pa.int64(),
+    "trip_type": pa.int64(),
+    "congestion_surcharge": pa.float64(),
+    "cbd_congestion_fee": pa.float64(),
+}
 TAXI_ZONE_REQUIRED_FIELDS = ("LocationID", "Borough", "Zone", "service_zone")
 
 
@@ -84,6 +130,29 @@ def validate_yellow_schema(schema: pa.Schema) -> str:
         if not field.nullable:
             raise SourceContractError(f"Unsupported nullability for {field.name}: expected nullable")
     return schema_version
+
+
+def validate_green_schema(schema: pa.Schema) -> str:
+    """Validate the frozen Green Taxi January 2025 physical contract."""
+    missing = [name for name in GREEN_BASELINE_FIELDS if name not in schema.names]
+    if missing:
+        raise SourceContractError(f"Missing baseline Green fields: {', '.join(missing)}")
+
+    unknown = [name for name in schema.names if name not in GREEN_BASELINE_FIELDS]
+    if unknown:
+        raise SourceContractError(f"Unsupported Green fields: {', '.join(unknown)}")
+    if schema.names != list(GREEN_BASELINE_FIELDS):
+        raise SourceContractError("Unsupported Green source column order")
+
+    for field in schema:
+        expected_type = GREEN_FIELD_TYPES[field.name]
+        if field.type != expected_type:
+            raise SourceContractError(
+                f"Unsupported type for {field.name}: expected {expected_type}, got {field.type}"
+            )
+        if not field.nullable:
+            raise SourceContractError(f"Unsupported nullability for {field.name}: expected nullable")
+    return "green_v1"
 
 
 def validate_taxi_zones(path: Path) -> int:
