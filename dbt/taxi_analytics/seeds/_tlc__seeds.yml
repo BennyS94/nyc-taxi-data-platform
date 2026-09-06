@@ -1,0 +1,41 @@
+version: 2
+
+seeds:
+  - name: tlc_vendors
+    description: TLC-documented TPEP provider codes used by Yellow Taxi trip records.
+    columns:
+      - name: vendor_id
+        description: TLC vendor code.
+        data_tests:
+          - not_null
+          - unique
+      - name: vendor_name
+        description: TLC vendor name.
+        data_tests:
+          - not_null
+
+  - name: tlc_rate_codes
+    description: TLC-documented final trip rate codes.
+    columns:
+      - name: rate_code_id
+        description: TLC rate code.
+        data_tests:
+          - not_null
+          - unique
+      - name: rate_code_name
+        description: Human-readable rate description.
+        data_tests:
+          - not_null
+
+  - name: tlc_payment_types
+    description: TLC-documented passenger payment codes.
+    columns:
+      - name: payment_type
+        description: TLC payment code.
+        data_tests:
+          - not_null
+          - unique
+      - name: payment_type_name
+        description: Human-readable payment description.
+        data_tests:
+          - not_null
