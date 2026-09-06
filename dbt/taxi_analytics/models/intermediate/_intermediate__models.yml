@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: int_trips_normalized
+    description: >-
+      Canonical Yellow trip boundary at one row per active source record. It preserves
+      source anomalies and technical lineage and is shaped for Phase 09 Green unioning.
+    columns:
+      - name: service_type
+        description: Canonical TLC service discriminator.
+      - name: source_file_id
+        description: Immutable source-file version identifier.
+      - name: source_row_number
+        description: Deterministic row position within the source file.
+      - name: pipeline_run_id
+        description: Ingestion run responsible for the source row.
+      - name: ingested_at
+        description: UTC raw ingestion timestamp.
+
+  - name: int_trips_enriched
+    description: >-
+      Canonical trip rows enriched with pickup and dropoff dates and unfiltered elapsed
+      seconds. Negative durations and all other source anomalies remain present.
+    columns:
+      - name: pickup_date
+        description: Calendar date of the source-local pickup timestamp.
+      - name: dropoff_date
+        description: Calendar date of the source-local dropoff timestamp.
+      - name: trip_duration_seconds
+        description: Signed elapsed seconds from pickup to dropoff.

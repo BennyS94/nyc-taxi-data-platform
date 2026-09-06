@@ -11,4 +11,14 @@ clean-targets: ["target", "dbt_packages"]
 models:
   taxi_analytics:
     staging:
+      +schema: staging
       +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+
+seeds:
+  taxi_analytics:
+    +schema: intermediate
