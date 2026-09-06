@@ -1,0 +1,89 @@
+version: 2
+
+models:
+  - name: stg_tlc__yellow_trips
+    description: >-
+      One row per raw Yellow Taxi row from loaded source versions. TLC source names are
+      mapped to the canonical trip contract without filtering business anomalies. The
+      CBD congestion fee is always exposed and remains null for historical v1 sources.
+    columns:
+      - name: service_type
+        description: Constant service discriminator, yellow.
+      - name: vendor_id
+        description: TLC technology provider identifier from VendorID.
+      - name: pickup_datetime
+        description: Source-local pickup timestamp without an invented timezone.
+      - name: dropoff_datetime
+        description: Source-local dropoff timestamp without an invented timezone.
+      - name: trip_distance_miles
+        description: Source trip_distance value in miles.
+      - name: rate_code_id
+        description: TLC rate code from RatecodeID.
+      - name: pickup_location_id
+        description: Pickup Taxi Zone identifier from PULocationID.
+      - name: dropoff_location_id
+        description: Dropoff Taxi Zone identifier from DOLocationID.
+      - name: trip_type
+        description: Typed null placeholder for later Yellow and Green harmonization.
+      - name: extra_amount
+        description: Source extra monetary value.
+      - name: mta_tax_amount
+        description: Source mta_tax monetary value.
+      - name: improvement_surcharge_amount
+        description: Source improvement_surcharge monetary value.
+      - name: congestion_surcharge_amount
+        description: Source congestion_surcharge monetary value.
+      - name: airport_fee_amount
+        description: Source Airport_fee monetary value.
+      - name: cbd_congestion_fee_amount
+        description: >-
+          Source CBD fee for v2 files and null where the v1 source schema omitted it.
+      - name: source_file_id
+        description: Immutable source-file version identifier.
+        data_tests:
+          - not_null
+      - name: source_row_number
+        description: Deterministic 1-based row position within the source file.
+        data_tests:
+          - not_null
+      - name: pipeline_run_id
+        description: Successful ingestion run responsible for the raw row.
+        data_tests:
+          - not_null
+      - name: ingested_at
+        description: UTC raw ingestion timestamp.
+        data_tests:
+          - not_null
+
+  - name: stg_tlc__taxi_zones
+    description: >-
+      One row per record in the single active loaded Taxi Zone source version. Descriptive
+      source values are preserved without normalization.
+    columns:
+      - name: location_id
+        description: TLC Taxi Zone LocationID, unique within the active version.
+        data_tests:
+          - not_null
+          - unique
+      - name: borough
+        description: Source Borough value without normalization.
+      - name: zone_name
+        description: Source Zone value under a stable canonical name.
+      - name: service_zone
+        description: Source service_zone value without normalization.
+      - name: source_file_id
+        description: Active Taxi Zone source-file version identifier.
+        data_tests:
+          - not_null
+      - name: source_row_number
+        description: Deterministic 1-based row position in the source CSV.
+        data_tests:
+          - not_null
+      - name: pipeline_run_id
+        description: Successful ingestion run responsible for the raw row.
+        data_tests:
+          - not_null
+      - name: ingested_at
+        description: UTC raw ingestion timestamp.
+        data_tests:
+          - not_null
