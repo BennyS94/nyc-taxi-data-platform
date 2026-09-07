@@ -104,10 +104,11 @@ def zone_reference_profile(array: pa.ChunkedArray, valid_ids: set) -> dict:
 
 def exact_duplicate_profile(path: Path, batch_size: int = 100_000) -> dict:
     parquet = pq.ParquetFile(path)
+    schema = parquet.schema_arrow
     hashes = []
     total = 0
     for batch in parquet.iter_batches(batch_size=batch_size):
-        frame = batch.to_pandas()
+        frame = _stable_duplicate_frame(batch)
         hashes.append(pd.util.hash_pandas_object(frame, index=False).to_numpy())
         total += len(frame)
     all_hashes = np.concatenate(hashes) if hashes else np.array([], dtype=np.uint64)
@@ -116,11 +117,13 @@ def exact_duplicate_profile(path: Path, batch_size: int = 100_000) -> dict:
     groups = defaultdict(Counter)
     if candidates:
         for batch in parquet.iter_batches(batch_size=batch_size):
-            frame = batch.to_pandas()
+            frame = _stable_duplicate_frame(batch)
             batch_hashes = pd.util.hash_pandas_object(frame, index=False).to_numpy()
             for index in np.flatnonzero(np.isin(batch_hashes, list(candidates))):
-                # Equality is checked on complete, normalized source rows within each hash bucket.
-                row = tuple(_duplicate_value(value) for value in frame.iloc[index].tolist())
+                source_row = batch.slice(int(index), 1).to_pylist()[0]
+                row = tuple(
+                    _duplicate_value(source_row[field.name], field.type) for field in schema
+                )
                 groups[int(batch_hashes[index])][row] += 1
     exact_counts = [count for bucket in groups.values() for count in bucket.values() if count > 1]
     excess = sum(count - 1 for count in exact_counts)
@@ -142,11 +145,43 @@ def dataframe_duplicate_profile(frame: pd.DataFrame) -> dict:
     }
 
 
-def _duplicate_value(value):
-    if value is None or (not isinstance(value, (list, dict)) and pd.isna(value)):
-        return ("null",)
+def _stable_duplicate_frame(batch: pa.RecordBatch) -> pd.DataFrame:
+    """Use schema-driven pandas dtypes so equal Arrow values hash identically."""
+    return batch.to_pandas(types_mapper=_stable_pandas_dtype)
+
+
+def _stable_pandas_dtype(data_type: pa.DataType):
+    if pa.types.is_signed_integer(data_type):
+        return {
+            8: pd.Int8Dtype(),
+            16: pd.Int16Dtype(),
+            32: pd.Int32Dtype(),
+            64: pd.Int64Dtype(),
+        }[data_type.bit_width]
+    if pa.types.is_unsigned_integer(data_type):
+        return {
+            8: pd.UInt8Dtype(),
+            16: pd.UInt16Dtype(),
+            32: pd.UInt32Dtype(),
+            64: pd.UInt64Dtype(),
+        }[data_type.bit_width]
+    if pa.types.is_string(data_type) or pa.types.is_large_string(data_type):
+        return pd.StringDtype()
+    if pa.types.is_boolean(data_type):
+        return pd.BooleanDtype()
+    return None
+
+
+def _duplicate_value(value, data_type: pa.DataType):
+    type_name = str(data_type)
+    if value is None:
+        return (type_name, "null")
     if isinstance(value, pd.Timestamp):
-        return ("timestamp", value.isoformat())
+        return (type_name, value.isoformat())
+    if isinstance(value, datetime):
+        return (type_name, value.isoformat())
     if isinstance(value, np.generic):
         value = value.item()
-    return (type(value).__name__, value)
+    if isinstance(value, float) and math.isnan(value):
+        return (type_name, "nan")
+    return (type_name, value)

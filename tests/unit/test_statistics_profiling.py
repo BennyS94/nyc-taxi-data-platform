@@ -62,3 +62,25 @@ def test_exact_duplicate_profile_verifies_complete_rows(tmp_path):
         "rows_participating_in_duplicate_groups": 2,
         "duplicate_excess_rows": 1, "duplicate_groups": 1,
     }
+
+
+def test_exact_duplicates_are_independent_of_nullable_integer_batch_boundaries(tmp_path):
+    path = tmp_path / "nullable-integers.parquet"
+    table = pa.table(
+        {
+            "nullable_integer": pa.array([1, None, 1], type=pa.int64()),
+            "label": pa.array(["same", "null-row", "same"], type=pa.large_string()),
+        }
+    )
+    pq.write_table(table, path, row_group_size=2)
+    expected = {
+        "total_rows": 3,
+        "unique_full_rows": 2,
+        "rows_participating_in_duplicate_groups": 2,
+        "duplicate_excess_rows": 1,
+        "duplicate_groups": 1,
+    }
+
+    assert exact_duplicate_profile(path, batch_size=1) == expected
+    assert exact_duplicate_profile(path, batch_size=2) == expected
+    assert exact_duplicate_profile(path, batch_size=3) == expected
