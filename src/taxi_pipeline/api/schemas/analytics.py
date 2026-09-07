@@ -14,7 +14,7 @@ class AnalyticsSummaryResponse(BaseModel):
 
 
 class MonthlyAnalyticsResponse(BaseModel):
-    month: date
+    month: date | None
     service_type: str
     trip_count: int
     total_amount: float | None

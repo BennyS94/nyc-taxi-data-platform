@@ -220,7 +220,9 @@ uvicorn taxi_pipeline.api.app:app --reload --port 8000
 
 Operational list endpoints use newest-first ordering with `limit`/`offset` pagination.
 Analytics accept optional `service_type`, `start_date`, and `end_date` filters and retain
-the warehouse's source-faithful anomaly semantics.
+the warehouse's source-faithful anomaly semantics. Monthly analytics represent facts
+whose nullable pickup timestamp has no analytical month with `"month": null`; those facts
+remain included in unfiltered summary, monthly, and zone aggregates.
 
 ## PostgreSQL setup
 

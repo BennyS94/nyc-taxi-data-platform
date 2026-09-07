@@ -29,7 +29,7 @@ def _yellow_values(include_cbd: bool) -> dict[str, list]:
         "tpep_pickup_datetime": [
             _source_datetime("2025-01-05T10:00:00"),
             _source_datetime("2025-01-06T11:00:00"),
-            _source_datetime("2024-12-31T23:59:00"),
+            None,
         ],
         "tpep_dropoff_datetime": [
             _source_datetime("2025-01-05T10:15:00"),

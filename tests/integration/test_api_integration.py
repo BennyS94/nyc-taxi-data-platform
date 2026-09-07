@@ -81,12 +81,13 @@ def api_client(db_session):
                 total_amount double precision
             );
             INSERT INTO marts.dim_date VALUES
-                (20250115, '2025-01-15'), (20250210, '2025-02-10');
+                (0, NULL), (20250115, '2025-01-15'), (20250210, '2025-02-10');
             INSERT INTO marts.dim_zone VALUES
                 (1, 1, 'Manhattan', 'Alpha'), (2, 2, 'Queens', 'Beta');
             INSERT INTO marts.fct_trips VALUES
                 ('yellow', 20250115, 1, 2.0, 10.0, 2.0, 15.0),
                 ('yellow', 20250210, 2, 4.0, 20.0, 4.0, 30.0),
+                ('yellow', 0, 1, 1.0, 5.0, 1.0, 8.0),
                 ('green', 20250115, 1, 3.0, 12.0, 1.0, 18.0);
             """
         )
@@ -123,17 +124,21 @@ def test_analytics_endpoints_return_exact_warehouse_aggregates(api_client):
     client, _, _ = api_client
     summary = client.get("/analytics/summary?service_type=yellow").json()
     assert summary == {
-        "trip_count": 2,
-        "total_amount": 45.0,
-        "average_trip_distance_miles": 3.0,
-        "average_fare_amount": 15.0,
-        "average_tip_amount": 3.0,
+        "trip_count": 3,
+        "total_amount": 53.0,
+        "average_trip_distance_miles": pytest.approx(7 / 3),
+        "average_fare_amount": pytest.approx(35 / 3),
+        "average_tip_amount": pytest.approx(7 / 3),
     }
 
-    monthly = client.get("/analytics/monthly?end_date=2025-01-31").json()
+    monthly_response = client.get("/analytics/monthly")
+    assert monthly_response.status_code == 200
+    monthly = monthly_response.json()
     assert [(row["month"], row["service_type"], row["trip_count"]) for row in monthly] == [
         ("2025-01-01", "green", 1),
         ("2025-01-01", "yellow", 1),
+        ("2025-02-01", "yellow", 1),
+        (None, "yellow", 1),
     ]
 
     zones = client.get("/analytics/zones?limit=1").json()
@@ -142,7 +147,7 @@ def test_analytics_endpoints_return_exact_warehouse_aggregates(api_client):
             "location_id": 1,
             "borough": "Manhattan",
             "zone_name": "Alpha",
-            "trip_count": 2,
-            "total_amount": 33.0,
+            "trip_count": 3,
+            "total_amount": 41.0,
         }
     ]

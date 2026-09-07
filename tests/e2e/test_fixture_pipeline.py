@@ -89,6 +89,17 @@ def test_fixture_pipeline_from_source_to_api(postgres_engine):
     assert response.status_code == 200
     assert response.json()["trip_count"] == 6
 
+    monthly_response = TestClient(create_app()).get("/analytics/monthly")
+    assert monthly_response.status_code == 200
+    assert any(
+        row["month"] is None and row["service_type"] == "yellow" and row["trip_count"] == 1
+        for row in monthly_response.json()
+    )
+
+    zones_response = TestClient(create_app()).get("/analytics/zones")
+    assert zones_response.status_code == 200
+    assert sum(row["trip_count"] for row in zones_response.json()) == 6
+
 
 def _fact_table(session: Session):
     from sqlalchemy import MetaData, Table
