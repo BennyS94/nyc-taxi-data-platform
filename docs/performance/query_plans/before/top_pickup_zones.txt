@@ -1,0 +1,56 @@
+Limit  (cost=252922.45..252922.48 rows=10 width=48) (actual time=866.236..872.955 rows=10.00 loops=1)
+  Buffers: shared hit=14995 read=208953
+  ->  Sort  (cost=252922.45..252922.79 rows=134 width=48) (actual time=866.235..872.952 rows=10.00 loops=1)
+        Sort Key: (count(*)) DESC, z.zone_key
+        Sort Method: top-N heapsort  Memory: 27kB
+        Buffers: shared hit=14995 read=208953
+        ->  GroupAggregate  (cost=252896.10..252919.56 rows=134 width=48) (actual time=749.813..872.850 rows=232.00 loops=1)
+              Group Key: z.zone_key, z.location_id, z.borough, z.zone_name
+              Buffers: shared hit=14995 read=208953
+              ->  Gather Merge  (cost=252896.10..252916.21 rows=134 width=40) (actual time=749.798..849.596 rows=125359.00 loops=1)
+                    Workers Planned: 2
+                    Workers Launched: 2
+                    Buffers: shared hit=14995 read=208953
+                    ->  Incremental Sort  (cost=251896.08..251900.72 rows=56 width=40) (actual time=688.204..718.734 rows=41786.33 loops=3)
+                          Sort Key: z.zone_key, z.location_id, z.borough, z.zone_name
+                          Presorted Key: z.zone_key
+                          Full-sort Groups: 88  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB
+                          Pre-sorted Groups: 107  Sort Method: quicksort  Average Memory: 180kB  Peak Memory: 280kB
+                          Buffers: shared hit=14995 read=208953
+                          Worker 0:  Full-sort Groups: 54  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB
+                            Pre-sorted Groups: 102  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 30kB
+                          Worker 1:  Full-sort Groups: 101  Sort Method: quicksort  Average Memory: 28kB  Peak Memory: 28kB
+                            Pre-sorted Groups: 120  Sort Method: quicksort  Average Memory: 198kB  Peak Memory: 333kB
+                          ->  Merge Join  (cost=251896.03..251898.20 rows=56 width=40) (actual time=688.092..705.298 rows=41786.33 loops=3)
+                                Merge Cond: (f.pickup_zone_key = z.zone_key)
+                                Buffers: shared hit=14913 read=208953
+                                ->  Sort  (cost=251878.65..251878.79 rows=56 width=12) (actual time=687.300..692.243 rows=41786.33 loops=3)
+                                      Sort Key: f.pickup_zone_key
+                                      Sort Method: quicksort  Memory: 3165kB
+                                      Buffers: shared hit=14901 read=208953
+                                      Worker 0:  Sort Method: quicksort  Memory: 416kB
+                                      Worker 1:  Sort Method: quicksort  Memory: 3822kB
+                                      ->  Hash Join  (cost=2.12..251877.03 rows=56 width=12) (actual time=54.241..679.932 rows=41786.33 loops=3)
+                                            Hash Cond: (f.pickup_date_key = d.date_key)
+                                            Buffers: shared hit=14901 read=208953
+                                            ->  Parallel Seq Scan on fct_trips f  (cost=0.00..251832.38 rows=11192 width=16) (actual time=2.162..464.378 rows=2381199.00 loops=3)
+                                                  Filter: (service_type = 'yellow'::text)
+                                                  Rows Removed by Filter: 16109
+                                                  Buffers: shared hit=14898 read=208953
+                                            ->  Hash  (cost=2.11..2.11 rows=1 width=4) (actual time=0.466..0.466 rows=1.00 loops=3)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                  Buffers: shared hit=3
+                                                  ->  Seq Scan on dim_date d  (cost=0.00..2.11 rows=1 width=4) (actual time=0.453..0.456 rows=1.00 loops=3)
+                                                        Filter: ((full_date >= '2025-01-15'::date) AND (full_date <= '2025-01-15'::date))
+                                                        Rows Removed by Filter: 73
+                                                        Buffers: shared hit=3
+                                ->  Sort  (cost=17.37..18.04 rows=266 width=32) (actual time=0.783..2.706 rows=41830.00 loops=3)
+                                      Sort Key: z.zone_key
+                                      Sort Method: quicksort  Memory: 38kB
+                                      Buffers: shared hit=12
+                                      Worker 0:  Sort Method: quicksort  Memory: 38kB
+                                      Worker 1:  Sort Method: quicksort  Memory: 38kB
+                                      ->  Seq Scan on dim_zone z  (cost=0.00..6.66 rows=266 width=32) (actual time=0.685..0.718 rows=266.00 loops=3)
+                                            Buffers: shared hit=12
+Planning Time: 0.210 ms
+Execution Time: 873.353 ms

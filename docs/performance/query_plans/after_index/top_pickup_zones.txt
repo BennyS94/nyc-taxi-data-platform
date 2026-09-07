@@ -1,0 +1,34 @@
+Limit  (cost=266183.22..266183.24 rows=10 width=48) (actual time=311.416..311.429 rows=10.00 loops=1)
+  Buffers: shared hit=4073
+  ->  Sort  (cost=266183.22..266183.88 rows=266 width=48) (actual time=311.412..311.422 rows=10.00 loops=1)
+        Sort Key: (count(*)) DESC, z.zone_key
+        Sort Method: top-N heapsort  Memory: 26kB
+        Buffers: shared hit=4073
+        ->  HashAggregate  (cost=266174.81..266177.47 rows=266 width=48) (actual time=311.224..311.309 rows=232.00 loops=1)
+              Group Key: z.zone_key, z.location_id, z.borough, z.zone_name
+              Batches: 1  Memory Usage: 72kB
+              Buffers: shared hit=4073
+              ->  Hash Join  (cost=1592.20..264725.82 rows=96599 width=40) (actual time=8.643..197.297 rows=125359.00 loops=1)
+                    Hash Cond: (f.pickup_zone_key = z.zone_key)
+                    Buffers: shared hit=4073
+                    ->  Nested Loop  (cost=1582.22..263387.60 rows=96599 width=12) (actual time=8.320..127.108 rows=125359.00 loops=1)
+                          Buffers: shared hit=4069
+                          ->  Seq Scan on dim_date d  (cost=0.00..2.11 rows=1 width=4) (actual time=0.041..0.057 rows=1.00 loops=1)
+                                Filter: ((full_date >= '2025-01-15'::date) AND (full_date <= '2025-01-15'::date))
+                                Rows Removed by Filter: 73
+                                Buffers: shared hit=1
+                          ->  Bitmap Heap Scan on fct_trips f  (cost=1582.22..262232.53 rows=115296 width=16) (actual time=8.264..56.787 rows=125359.00 loops=1)
+                                Recheck Cond: ((pickup_date_key = d.date_key) AND (service_type = 'yellow'::text))
+                                Heap Blocks: exact=3958
+                                Buffers: shared hit=4068
+                                ->  Bitmap Index Scan on "46c5c2ca3d7156f942d13ddaaa4e284b"  (cost=0.00..1553.39 rows=115296 width=0) (actual time=7.120..7.120 rows=125359.00 loops=1)
+                                      Index Cond: ((pickup_date_key = d.date_key) AND (service_type = 'yellow'::text))
+                                      Index Searches: 1
+                                      Buffers: shared hit=110
+                    ->  Hash  (cost=6.66..6.66 rows=266 width=32) (actual time=0.289..0.291 rows=266.00 loops=1)
+                          Buckets: 1024  Batches: 1  Memory Usage: 26kB
+                          Buffers: shared hit=4
+                          ->  Seq Scan on dim_zone z  (cost=0.00..6.66 rows=266 width=32) (actual time=0.122..0.181 rows=266.00 loops=1)
+                                Buffers: shared hit=4
+Planning Time: 0.719 ms
+Execution Time: 311.922 ms

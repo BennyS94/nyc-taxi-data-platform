@@ -1,0 +1,31 @@
+Finalize GroupAggregate  (cost=285887.27..290946.46 rows=14600 width=76) (actual time=2918.915..2926.762 rows=10.00 loops=1)
+  Group Key: ((date_trunc('month'::text, (d.full_date)::timestamp with time zone))::date), f.service_type
+  Buffers: shared hit=13241 read=210645
+  ->  Gather Merge  (cost=285887.27..289968.26 rows=35040 width=148) (actual time=2918.905..2926.741 rows=21.00 loops=1)
+        Workers Planned: 2
+        Workers Launched: 2
+        Buffers: shared hit=13241 read=210645
+        ->  Sort  (cost=284887.25..284923.75 rows=14600 width=148) (actual time=2894.297..2894.299 rows=7.00 loops=3)
+              Sort Key: ((date_trunc('month'::text, (d.full_date)::timestamp with time zone))::date), f.service_type
+              Sort Method: quicksort  Memory: 26kB
+              Buffers: shared hit=13241 read=210645
+              Worker 0:  Sort Method: quicksort  Memory: 26kB
+              Worker 1:  Sort Method: quicksort  Memory: 26kB
+              ->  Partial HashAggregate  (cost=283621.89..283877.39 rows=14600 width=148) (actual time=2894.229..2894.264 rows=7.00 loops=3)
+                    Group Key: (date_trunc('month'::text, (d.full_date)::timestamp with time zone))::date, f.service_type
+                    Batches: 1  Memory Usage: 289kB
+                    Buffers: shared hit=13209 read=210645
+                    Worker 0:  Batches: 1  Memory Usage: 289kB
+                    Worker 1:  Batches: 1  Memory Usage: 289kB
+                    ->  Hash Join  (cost=2.67..269127.53 rows=828249 width=68) (actual time=1.100..2074.714 rows=2397307.67 loops=3)
+                          Hash Cond: (f.pickup_date_key = d.date_key)
+                          Buffers: shared hit=13209 read=210645
+                          ->  Parallel Seq Scan on fct_trips f  (cost=0.00..246236.10 rows=2238510 width=68) (actual time=0.599..288.804 rows=2397307.67 loops=3)
+                                Buffers: shared hit=13206 read=210645
+                          ->  Hash  (cost=1.74..1.74 rows=74 width=8) (actual time=0.478..0.479 rows=74.00 loops=3)
+                                Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                                Buffers: shared hit=3
+                                ->  Seq Scan on dim_date d  (cost=0.00..1.74 rows=74 width=8) (actual time=0.450..0.458 rows=74.00 loops=3)
+                                      Buffers: shared hit=3
+Planning Time: 0.175 ms
+Execution Time: 2927.050 ms

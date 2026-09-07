@@ -1,0 +1,18 @@
+Aggregate  (cost=264595.10..264595.11 rows=1 width=40) (actual time=31.750..31.752 rows=1.00 loops=1)
+  Buffers: shared hit=4069
+  ->  Nested Loop  (cost=1582.22..263387.60 rows=96599 width=32) (actual time=1.920..23.025 rows=125359.00 loops=1)
+        Buffers: shared hit=4069
+        ->  Seq Scan on dim_date d  (cost=0.00..2.11 rows=1 width=4) (actual time=0.008..0.012 rows=1.00 loops=1)
+              Filter: ((full_date >= '2025-01-15'::date) AND (full_date <= '2025-01-15'::date))
+              Rows Removed by Filter: 73
+              Buffers: shared hit=1
+        ->  Bitmap Heap Scan on fct_trips f  (cost=1582.22..262232.53 rows=115296 width=36) (actual time=1.909..8.630 rows=125359.00 loops=1)
+              Recheck Cond: ((pickup_date_key = d.date_key) AND (service_type = 'yellow'::text))
+              Heap Blocks: exact=3958
+              Buffers: shared hit=4068
+              ->  Bitmap Index Scan on "46c5c2ca3d7156f942d13ddaaa4e284b"  (cost=0.00..1553.39 rows=115296 width=0) (actual time=1.579..1.580 rows=125359.00 loops=1)
+                    Index Cond: ((pickup_date_key = d.date_key) AND (service_type = 'yellow'::text))
+                    Index Searches: 1
+                    Buffers: shared hit=110
+Planning Time: 0.113 ms
+Execution Time: 31.861 ms

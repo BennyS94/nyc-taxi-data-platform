@@ -1,0 +1,26 @@
+Finalize Aggregate  (cost=274387.78..274387.79 rows=1 width=40) (actual time=910.559..922.817 rows=1.00 loops=1)
+  Buffers: shared hit=13149 read=210704 written=3
+  ->  Gather  (cost=274387.54..274387.75 rows=2 width=112) (actual time=910.159..922.801 rows=3.00 loops=1)
+        Workers Planned: 2
+        Workers Launched: 2
+        Buffers: shared hit=13149 read=210704 written=3
+        ->  Partial Aggregate  (cost=273387.54..273387.55 rows=1 width=112) (actual time=886.713..886.716 rows=1.00 loops=3)
+              Buffers: shared hit=13149 read=210704 written=3
+              ->  Hash Join  (cost=2.12..272884.11 rows=40274 width=32) (actual time=75.861..880.603 rows=41786.33 loops=3)
+                    Hash Cond: (f.pickup_date_key = d.date_key)
+                    Buffers: shared hit=13149 read=210704 written=3
+                    ->  Parallel Seq Scan on fct_trips f  (cost=0.00..261303.21 rows=2980277 width=36) (actual time=0.855..628.513 rows=2381199.00 loops=3)
+                          Filter: (service_type = 'yellow'::text)
+                          Rows Removed by Filter: 16109
+                          Buffers: shared hit=13146 read=210704 written=3
+                    ->  Hash  (cost=2.11..2.11 rows=1 width=4) (actual time=0.478..0.479 rows=1.00 loops=3)
+                          Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                          Buffers: shared hit=3
+                          ->  Seq Scan on dim_date d  (cost=0.00..2.11 rows=1 width=4) (actual time=0.465..0.468 rows=1.00 loops=3)
+                                Filter: ((full_date >= '2025-01-15'::date) AND (full_date <= '2025-01-15'::date))
+                                Rows Removed by Filter: 73
+                                Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=1
+Planning Time: 0.184 ms
+Execution Time: 922.941 ms

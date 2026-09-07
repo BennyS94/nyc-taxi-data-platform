@@ -1,0 +1,49 @@
+Limit  (cost=275125.76..275125.78 rows=10 width=48) (actual time=754.476..761.886 rows=10.00 loops=1)
+  Buffers: shared hit=16035 read=207861
+  ->  Sort  (cost=275125.76..275126.42 rows=266 width=48) (actual time=754.475..761.884 rows=10.00 loops=1)
+        Sort Key: (count(*)) DESC, z.zone_key
+        Sort Method: top-N heapsort  Memory: 27kB
+        Buffers: shared hit=16035 read=207861
+        ->  Finalize GroupAggregate  (cost=275033.47..275120.01 rows=266 width=48) (actual time=754.036..761.823 rows=232.00 loops=1)
+              Group Key: z.zone_key, z.location_id, z.borough, z.zone_name
+              Buffers: shared hit=16035 read=207861
+              ->  Gather Merge  (cost=275033.47..275107.78 rows=638 width=48) (actual time=754.025..761.630 rows=657.00 loops=1)
+                    Workers Planned: 2
+                    Workers Launched: 2
+                    Buffers: shared hit=16035 read=207861
+                    ->  Sort  (cost=274033.45..274034.11 rows=266 width=48) (actual time=729.839..729.855 rows=219.00 loops=3)
+                          Sort Key: z.zone_key, z.location_id, z.borough, z.zone_name
+                          Sort Method: quicksort  Memory: 39kB
+                          Buffers: shared hit=16035 read=207861
+                          Worker 0:  Sort Method: quicksort  Memory: 39kB
+                          Worker 1:  Sort Method: quicksort  Memory: 39kB
+                          ->  Partial HashAggregate  (cost=274020.08..274022.74 rows=266 width=48) (actual time=729.700..729.744 rows=219.00 loops=3)
+                                Group Key: z.zone_key, z.location_id, z.borough, z.zone_name
+                                Batches: 1  Memory Usage: 72kB
+                                Buffers: shared hit=16005 read=207861
+                                Worker 0:  Batches: 1  Memory Usage: 72kB
+                                Worker 1:  Batches: 1  Memory Usage: 72kB
+                                ->  Hash Join  (cost=12.11..273417.53 rows=40170 width=40) (actual time=19.392..714.677 rows=41786.33 loops=3)
+                                      Hash Cond: (f.pickup_zone_key = z.zone_key)
+                                      Buffers: shared hit=16005 read=207861
+                                      ->  Hash Join  (cost=2.12..272855.20 rows=40170 width=12) (actual time=18.645..705.235 rows=41786.33 loops=3)
+                                            Hash Cond: (f.pickup_date_key = d.date_key)
+                                            Buffers: shared hit=15993 read=207861
+                                            ->  Parallel Seq Scan on fct_trips f  (cost=0.00..261304.19 rows=2972585 width=16) (actual time=1.829..469.861 rows=2381199.00 loops=3)
+                                                  Filter: (service_type = 'yellow'::text)
+                                                  Rows Removed by Filter: 16109
+                                                  Buffers: shared hit=15990 read=207861
+                                            ->  Hash  (cost=2.11..2.11 rows=1 width=4) (actual time=0.447..0.448 rows=1.00 loops=3)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                  Buffers: shared hit=3
+                                                  ->  Seq Scan on dim_date d  (cost=0.00..2.11 rows=1 width=4) (actual time=0.433..0.436 rows=1.00 loops=3)
+                                                        Filter: ((full_date >= '2025-01-15'::date) AND (full_date <= '2025-01-15'::date))
+                                                        Rows Removed by Filter: 73
+                                                        Buffers: shared hit=3
+                                      ->  Hash  (cost=6.66..6.66 rows=266 width=32) (actual time=0.725..0.725 rows=266.00 loops=3)
+                                            Buckets: 1024  Batches: 1  Memory Usage: 26kB
+                                            Buffers: shared hit=12
+                                            ->  Seq Scan on dim_zone z  (cost=0.00..6.66 rows=266 width=32) (actual time=0.609..0.651 rows=266.00 loops=3)
+                                                  Buffers: shared hit=12
+Planning Time: 0.239 ms
+Execution Time: 762.024 ms

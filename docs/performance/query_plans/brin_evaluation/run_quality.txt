@@ -1,0 +1,20 @@
+Sort  (cost=5.27..5.41 rows=55 width=101) (actual time=0.039..0.041 rows=27.00 loops=1)
+  Sort Key: data_quality_results.quality_result_id
+  Sort Method: quicksort  Memory: 28kB
+  Buffers: shared hit=4
+  InitPlan 2
+    ->  Result  (cost=0.30..0.31 rows=1 width=8) (actual time=0.017..0.018 rows=1.00 loops=1)
+          Buffers: shared hit=2
+          InitPlan 1
+            ->  Limit  (cost=0.14..0.30 rows=1 width=8) (actual time=0.016..0.016 rows=1.00 loops=1)
+                  Buffers: shared hit=2
+                  ->  Index Only Scan Backward using uq_quality_results_run_check on data_quality_results data_quality_results_1  (cost=0.14..17.37 rows=110 width=8) (actual time=0.015..0.015 rows=1.00 loops=1)
+                        Heap Fetches: 1
+                        Index Searches: 1
+                        Buffers: shared hit=2
+  ->  Seq Scan on data_quality_results  (cost=0.00..3.38 rows=55 width=101) (actual time=0.030..0.034 rows=27.00 loops=1)
+        Filter: (run_id = (InitPlan 2).col1)
+        Rows Removed by Filter: 55
+        Buffers: shared hit=4
+Planning Time: 0.116 ms
+Execution Time: 0.062 ms

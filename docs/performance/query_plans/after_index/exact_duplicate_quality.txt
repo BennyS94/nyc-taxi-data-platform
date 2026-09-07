@@ -1,0 +1,33 @@
+Aggregate  (cost=1226168.21..1226168.22 rows=1 width=8) (actual time=4944.015..4991.718 rows=1.00 loops=1)
+  Buffers: shared hit=1557 read=182739, temp read=142218 written=142390
+  ->  GroupAggregate  (cost=588445.00..1217561.87 rows=688507 width=146) (actual time=4944.014..4991.716 rows=0.00 loops=1)
+        Group Key: yellow_trips."VendorID", yellow_trips.tpep_pickup_datetime, yellow_trips.tpep_dropoff_datetime, yellow_trips.passenger_count, yellow_trips.trip_distance, yellow_trips."RatecodeID", yellow_trips.store_and_fwd_flag, yellow_trips."PULocationID", yellow_trips."DOLocationID", yellow_trips.payment_type, yellow_trips.fare_amount, yellow_trips.extra, yellow_trips.mta_tax, yellow_trips.tip_amount, yellow_trips.tolls_amount, yellow_trips.improvement_surcharge, yellow_trips.total_amount, yellow_trips.congestion_surcharge, yellow_trips."Airport_fee", yellow_trips.cbd_congestion_fee
+        Filter: (count(*) > 1)
+        Rows Removed by Filter: 3668371
+        Buffers: shared hit=1557 read=182739, temp read=142218 written=142390
+        InitPlan 2
+          ->  Result  (cost=0.46..0.47 rows=1 width=8) (actual time=0.025..0.028 rows=1.00 loops=1)
+                Buffers: shared hit=4
+                InitPlan 1
+                  ->  Limit  (cost=0.43..0.46 rows=1 width=8) (actual time=0.023..0.024 rows=1.00 loops=1)
+                        Buffers: shared hit=4
+                        ->  Index Only Scan Backward using pk_yellow_trips on yellow_trips yellow_trips_1  (cost=0.43..217296.60 rows=7141036 width=8) (actual time=0.022..0.023 rows=1.00 loops=1)
+                              Heap Fetches: 0
+                              Index Searches: 1
+                              Buffers: shared hit=4
+        ->  Gather Merge  (cost=588444.53..1004290.19 rows=3570518 width=142) (actual time=2618.926..3696.844 rows=3668371.00 loops=1)
+              Workers Planned: 2
+              Workers Launched: 2
+              Buffers: shared hit=1557 read=182739, temp read=142218 written=142390
+              ->  Sort  (cost=587444.51..591163.80 rows=1487716 width=142) (actual time=2569.939..2815.225 rows=1222790.33 loops=3)
+                    Sort Key: yellow_trips."VendorID", yellow_trips.tpep_pickup_datetime, yellow_trips.tpep_dropoff_datetime, yellow_trips.passenger_count, yellow_trips.trip_distance, yellow_trips."RatecodeID", yellow_trips.store_and_fwd_flag, yellow_trips."PULocationID", yellow_trips."DOLocationID", yellow_trips.payment_type, yellow_trips.fare_amount, yellow_trips.extra, yellow_trips.mta_tax, yellow_trips.tip_amount, yellow_trips.tolls_amount, yellow_trips.improvement_surcharge, yellow_trips.total_amount, yellow_trips.congestion_surcharge, yellow_trips."Airport_fee", yellow_trips.cbd_congestion_fee
+                    Sort Method: external merge  Disk: 197488kB
+                    Buffers: shared hit=1553 read=182739, temp read=142218 written=142390
+                    Worker 0:  Sort Method: external merge  Disk: 186696kB
+                    Worker 1:  Sort Method: external merge  Disk: 184792kB
+                    ->  Parallel Seq Scan on yellow_trips  (cost=0.00..221348.90 rows=1487716 width=142) (actual time=0.694..688.788 rows=1222790.33 loops=3)
+                          Filter: (_source_file_id = (InitPlan 2).col1)
+                          Rows Removed by Filter: 1158409
+                          Buffers: shared hit=1417 read=182739
+Planning Time: 0.236 ms
+Execution Time: 5046.637 ms

@@ -2,7 +2,9 @@
     config(
         materialized='incremental',
         unique_key=['source_file_id', 'source_row_number'],
-        incremental_strategy='delete+insert'
+        incremental_strategy='delete+insert',
+        indexes=[{'columns': ['pickup_date_key', 'service_type'], 'type': 'btree'}],
+        post_hook='analyze {{ this }}'
     )
 }}
 

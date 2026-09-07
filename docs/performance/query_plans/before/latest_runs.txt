@@ -1,0 +1,10 @@
+Limit  (cost=23.83..23.96 rows=50 width=220) (actual time=0.013..0.014 rows=5.00 loops=1)
+  Buffers: shared hit=1
+  ->  Sort  (cost=23.83..24.63 rows=320 width=220) (actual time=0.013..0.013 rows=5.00 loops=1)
+        Sort Key: started_at DESC, run_id DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=1
+        ->  Seq Scan on pipeline_runs  (cost=0.00..13.20 rows=320 width=220) (actual time=0.007..0.008 rows=5.00 loops=1)
+              Buffers: shared hit=1
+Planning Time: 0.052 ms
+Execution Time: 0.028 ms

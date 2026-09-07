@@ -43,6 +43,7 @@ logs/
 airflow.db
 airflow.cfg
 standalone_admin_password.txt
+.postgres-benchmark/
 
 # General local/runtime files
 *.log
