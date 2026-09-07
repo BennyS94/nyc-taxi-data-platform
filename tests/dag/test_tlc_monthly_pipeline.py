@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+if os.name == "nt":
+    pytest.skip("Airflow DAG imports require a POSIX runtime", allow_module_level=True)
+
 pytest.importorskip("airflow")
 
 from airflow.models import DagBag

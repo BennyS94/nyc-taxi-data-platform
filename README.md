@@ -252,3 +252,33 @@ alembic check
 On PowerShell, create the file with `Copy-Item .env.example .env` and set the test URL with
 `$env:TEST_DATABASE_URL = $env:DATABASE_URL`. The integration tests require an explicit
 `TEST_DATABASE_URL` and use transactions so test-controlled rows are rolled back.
+
+## Testing and CI
+
+Tests are separated by responsibility: fast unit tests avoid network and database access;
+integration tests exercise real PostgreSQL migrations, constraints, COPY ingestion,
+rollback, quality SQL, and FastAPI queries; DAG tests validate Airflow structure without a
+scheduler. The end-to-end smoke ingests tiny committed Yellow, Green, and Taxi Zone
+fixtures, runs quality and dbt, verifies fact lineage, and queries the analytics API.
+
+Regenerate the deterministic offline fixtures when their explicit contract changes:
+
+```bash
+python scripts/bootstrap_test_data.py
+```
+
+Run the main local checks with a clean PostgreSQL test database configured through
+`TEST_DATABASE_URL` and the matching dbt `POSTGRES_*` variables:
+
+```bash
+ruff check .
+alembic upgrade head
+alembic check
+python -m pytest
+dbt build --project-dir dbt/taxi_analytics --profiles-dir dbt/taxi_analytics
+docker compose config --quiet
+```
+
+GitHub Actions runs isolated lint, Python/PostgreSQL, dbt/end-to-end, and Airflow jobs on
+pushes and pull requests. CI uses PostgreSQL 17 and only the committed tiny fixtures; it
+does not contact NYC TLC or download production trip files.
