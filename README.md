@@ -240,18 +240,23 @@ docker compose up -d
 alembic upgrade head
 ```
 
-Docker Compose should report the `postgres` service as healthy. Validate the project with:
+Docker Compose should report the `postgres` service as healthy. Create a separate test
+database on that PostgreSQL instance, then validate the project against it:
 
 ```bash
-export TEST_DATABASE_URL="$DATABASE_URL"
+createdb nyc_tlc_test
+export TEST_DATABASE_URL="postgresql+psycopg://nyc_tlc:your_password@localhost:5432/nyc_tlc_test"
 python -m pytest
 ruff check .
 alembic check
 ```
 
-On PowerShell, create the file with `Copy-Item .env.example .env` and set the test URL with
-`$env:TEST_DATABASE_URL = $env:DATABASE_URL`. The integration tests require an explicit
-`TEST_DATABASE_URL` and use transactions so test-controlled rows are rolled back.
+On PowerShell, create the file with `Copy-Item .env.example .env` and set
+`$env:TEST_DATABASE_URL` to the separate test database URL. Never point
+`TEST_DATABASE_URL` at the application/development database. Ordinary integration tests
+use transactions so test-controlled rows are rolled back. Destructive migration-chain
+tests create and drop their own uniquely named disposable database on the same server;
+the configured test role therefore needs `CREATEDB` privilege.
 
 ## Testing and CI
 
@@ -267,8 +272,9 @@ Regenerate the deterministic offline fixtures when their explicit contract chang
 python scripts/bootstrap_test_data.py
 ```
 
-Run the main local checks with a clean PostgreSQL test database configured through
-`TEST_DATABASE_URL` and the matching dbt `POSTGRES_*` variables:
+Run the main local checks with a dedicated PostgreSQL test database configured through
+`TEST_DATABASE_URL` and the matching dbt `POSTGRES_*` variables. Do not use the normal
+application/development database for tests:
 
 ```bash
 ruff check .
