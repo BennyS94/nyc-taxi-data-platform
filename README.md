@@ -294,3 +294,20 @@ default. PostgreSQL partitioning and BRIN were measured and rejected at the curr
 
 Environment details, reproducible scripts, timings, query plans, storage cost, and the
 partitioning decision are documented in [`docs/performance/`](docs/performance/BASELINE.md).
+
+## Optional AWS S3 landing storage
+
+`LANDING_BACKEND=local` preserves the default local workflow. With
+`LANDING_BACKEND=s3`, `AWS_REGION`, and `TLC_S3_BUCKET` configured, boto3 stores validated
+source artifacts in one private, versioned, encrypted bucket using checksum-addressed
+immutable keys. Uploads verify object size and SHA-256 metadata; recovery downloads to a
+partial local file, verifies its full SHA-256, and atomically restores the normal landing
+path used by ingestion.
+
+Alembic records storage backend, S3 URI, Version ID, and storage time on each source-file
+version without changing checksum identity or source-revision blocking. Airflow continues
+to call the application layer and contains no direct AWS logic. Normal tests and CI use
+mocked S3 behavior and require no AWS account or credentials.
+
+Bucket safeguards, least-privilege IAM guidance, sync/verification commands, recovery,
+and version-aware cleanup are documented in [`docs/aws_s3.md`](docs/aws_s3.md).

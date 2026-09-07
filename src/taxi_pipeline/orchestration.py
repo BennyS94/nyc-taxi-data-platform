@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session
 
 from taxi_pipeline.database import get_engine
 from taxi_pipeline.ingestion import IngestionResult, ingest_source
-from taxi_pipeline.landing import ensure_local, inspect_source
 from taxi_pipeline.metadata import RunStatus, SkipReason
 from taxi_pipeline.quality import find_latest_successful_run, run_quality_checks
 from taxi_pipeline.sources import green_trip_source, taxi_zone_source, yellow_trip_source
+from taxi_pipeline.storage import persist_storage_metadata, prepare_source
 
 LOGGER = logging.getLogger(__name__)
 
@@ -125,11 +125,11 @@ def run_dbt_build(project_dir: Path) -> dict[str, str]:
 
 
 def _ensure_loaded(source, repository_root: Path) -> dict[str, Any]:
-    ensure_local(source, repository_root)
-    metadata = inspect_source(source, repository_root)
+    prepared = prepare_source(source, repository_root)
     engine = get_engine()
     try:
-        ingestion = ingest_source(engine, metadata, repository_root)
+        ingestion = ingest_source(engine, prepared.metadata, repository_root)
+        persist_storage_metadata(engine, ingestion.source_file_id, prepared.storage)
     finally:
         engine.dispose()
     _raise_for_source_revision(ingestion)

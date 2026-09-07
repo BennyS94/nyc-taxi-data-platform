@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from taxi_pipeline.database import get_engine
 from taxi_pipeline.ingestion import IngestionResult, ingest_source
-from taxi_pipeline.landing import ensure_local, inspect_source
 from taxi_pipeline.metadata import SourceRegistrationResult, prepare_ingestion
 from taxi_pipeline.quality import (
     QualityRunSummary,
@@ -19,6 +18,17 @@ from taxi_pipeline.quality import (
 )
 from taxi_pipeline.sources import green_trip_source, taxi_zone_source, yellow_trip_source
 from taxi_pipeline.sources.models import SourceFileMetadata, SourcePartition
+from taxi_pipeline.storage import (
+    S3LandingStorage,
+    build_storage,
+    find_source_file_id,
+    materialize_source,
+    persist_storage_metadata,
+    prepare_source,
+    sync_all_sources,
+    sync_source,
+    verify_source_storage,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -54,6 +64,19 @@ def build_parser() -> argparse.ArgumentParser:
     quality_run.add_argument("--service", choices=("yellow", "green"), required=True)
     quality_run.add_argument("--year", type=int, required=True)
     quality_run.add_argument("--month", type=int, required=True)
+
+    storage = commands.add_parser("storage", help="manage durable source storage")
+    storage_commands = storage.add_subparsers(dest="storage_command", required=True)
+    sync = storage_commands.add_parser("sync", help="sync one registered source to S3")
+    sync.add_argument("--service", choices=("yellow", "green", "zones"), required=True)
+    sync.add_argument("--year", type=int)
+    sync.add_argument("--month", type=int)
+    storage_commands.add_parser("sync-all", help="sync every registered local source")
+    verify = storage_commands.add_parser("verify", help="verify one S3 object")
+    verify.add_argument("--source-file-id", type=int, required=True)
+    materialize = storage_commands.add_parser("materialize", help="restore one local source")
+    materialize.add_argument("--source-file-id", type=int, required=True)
+    storage_commands.add_parser("check-bucket", help="verify private bucket safeguards")
     return parser
 
 
@@ -62,16 +85,20 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "quality":
         return _quality_command(args)
+    if args.command == "storage":
+        return _storage_command(args)
 
     try:
         source = _source_from_args(args)
-        ensure_local(source, REPOSITORY_ROOT)
-        metadata = inspect_source(source, REPOSITORY_ROOT)
+        prepared = prepare_source(source, REPOSITORY_ROOT)
+        metadata = prepared.metadata
         if args.command in {"ingest", "ingest-zones"}:
             ingestion = _ingest_metadata(metadata)
+            _persist_storage(ingestion.source_file_id, prepared.storage)
             registration = None
         elif args.source_command in {"register", "register-zones"}:
             registration = _register_metadata(metadata)
+            _persist_storage(registration.source_file_id, prepared.storage)
             ingestion = None
         else:
             registration = None
@@ -140,12 +167,51 @@ def _run_quality_for_partition(service: str, year: int, month: int) -> QualityRu
         engine.dispose()
 
 
+def _storage_command(args: argparse.Namespace) -> int:
+    try:
+        if args.storage_command == "sync":
+            source_file_id = find_source_file_id(args.service, args.year, args.month)
+            result = sync_source(source_file_id, REPOSITORY_ROOT)
+            print(f"Source file ID: {source_file_id}")
+            print(f"Storage URI: {result.uri}")
+        elif args.storage_command == "sync-all":
+            results = sync_all_sources(REPOSITORY_ROOT)
+            print(f"Sources synced: {len(results)}")
+        elif args.storage_command == "verify":
+            result = verify_source_storage(args.source_file_id)
+            print(f"Storage verified: {result.uri}")
+        elif args.storage_command == "materialize":
+            path = materialize_source(args.source_file_id, REPOSITORY_ROOT)
+            print(f"Materialized: {path.relative_to(REPOSITORY_ROOT)}")
+        else:
+            storage = build_storage()
+            if not isinstance(storage, S3LandingStorage):
+                raise ValueError("bucket check requires LANDING_BACKEND=s3")
+            result = storage.verify_bucket()
+            print(
+                "Bucket: versioning={versioning}, public_access={public_access}, "
+                "encryption={encryption}".format(**result)
+            )
+    except (OSError, RuntimeError, SQLAlchemyError, ValueError) as error:
+        print(f"Storage error: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def _register_with_engine(
     engine: Engine,
     metadata: SourceFileMetadata,
 ) -> SourceRegistrationResult:
     with Session(engine) as session, session.begin():
         return prepare_ingestion(session, metadata)
+
+
+def _persist_storage(source_file_id: int, storage) -> None:
+    engine = get_engine()
+    try:
+        persist_storage_metadata(engine, source_file_id, storage)
+    finally:
+        engine.dispose()
 
 
 def _print_metadata(metadata: SourceFileMetadata) -> None:

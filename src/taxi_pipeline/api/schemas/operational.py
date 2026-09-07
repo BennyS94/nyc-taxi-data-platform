@@ -31,6 +31,10 @@ class SourceFileResponse(BaseModel):
     downloaded_at: datetime | None
     validated_at: datetime | None
     loaded_at: datetime | None
+    storage_backend: str
+    storage_uri: str | None
+    storage_version_id: str | None
+    stored_at: datetime | None
 
 
 class SourceFilePage(BaseModel):

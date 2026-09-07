@@ -10,6 +10,7 @@ from sqlalchemy import (
     SmallInteger,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
@@ -53,3 +54,12 @@ class SourceFile(Base):
     downloaded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     validated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     loaded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    storage_backend: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default="local",
+        server_default=text("'local'"),
+    )
+    storage_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
+    storage_version_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stored_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

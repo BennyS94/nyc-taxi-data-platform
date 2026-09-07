@@ -32,10 +32,19 @@ def metadata(**changes):
     return SourceFileMetadata(**values)
 
 
+def mock_preparation(monkeypatch, source_metadata, observed=None):
+    def prepare(source, root):
+        if observed is not None:
+            observed["source"] = source
+        return SimpleNamespace(metadata=source_metadata, storage=object())
+
+    monkeypatch.setattr(cli, "prepare_source", prepare)
+    monkeypatch.setattr(cli, "_persist_storage", lambda source_file_id, storage: None)
+
+
 def test_yellow_source_cli_fetches_and_prints_concise_metadata(monkeypatch, capsys):
     observed = {}
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: observed.setdefault("source", source))
-    monkeypatch.setattr(cli, "inspect_source", lambda source, root: metadata())
+    mock_preparation(monkeypatch, metadata(), observed)
 
     result = cli.main(["source", "fetch", "--service", "yellow", "--year", "2025", "--month", "1"])
 
@@ -52,11 +61,9 @@ def test_yellow_source_cli_fetches_and_prints_concise_metadata(monkeypatch, caps
 
 
 def test_taxi_zone_cli_reports_valid_structure(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
-    monkeypatch.setattr(
-        cli,
-        "inspect_source",
-        lambda source, root: metadata(
+    mock_preparation(
+        monkeypatch,
+        metadata(
             dataset_name="taxi_zone_lookup",
             service_type=None,
             year=None,
@@ -76,11 +83,9 @@ def test_taxi_zone_cli_reports_valid_structure(monkeypatch, capsys):
 
 def test_green_source_cli_uses_green_partition(monkeypatch, capsys):
     observed = {}
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: observed.setdefault("source", source))
-    monkeypatch.setattr(
-        cli,
-        "inspect_source",
-        lambda source, root: metadata(
+    mock_preparation(
+        monkeypatch,
+        metadata(
             dataset_name="green_tripdata",
             service_type="green",
             partition_key="green/2025/01",
@@ -88,6 +93,7 @@ def test_green_source_cli_uses_green_partition(monkeypatch, capsys):
             row_count=48_326,
             schema_version="green_v1",
         ),
+        observed,
     )
 
     assert cli.main(["source", "fetch", "--service", "green", "--year", "2025", "--month", "1"]) == 0
@@ -96,20 +102,17 @@ def test_green_source_cli_uses_green_partition(monkeypatch, capsys):
 
 
 def test_source_cli_returns_nonzero_on_contract_failure(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
-
     def fail(source, root):
         raise SourceContractError("unsupported schema")
 
-    monkeypatch.setattr(cli, "inspect_source", fail)
+    monkeypatch.setattr(cli, "prepare_source", fail)
 
     assert cli.main(["source", "fetch-zones"]) == 1
     assert "Source error: unsupported schema" in capsys.readouterr().err
 
 
 def test_source_registration_cli_prints_registry_decision(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
-    monkeypatch.setattr(cli, "inspect_source", lambda source, root: metadata())
+    mock_preparation(monkeypatch, metadata())
     monkeypatch.setattr(
         cli,
         "_register_metadata",
@@ -136,11 +139,9 @@ def test_source_registration_cli_prints_registry_decision(monkeypatch, capsys):
 
 def test_taxi_zone_registration_uses_reference_source(monkeypatch):
     observed = {}
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
-    monkeypatch.setattr(
-        cli,
-        "inspect_source",
-        lambda source, root: metadata(
+    mock_preparation(
+        monkeypatch,
+        metadata(
             dataset_name="taxi_zone_lookup",
             service_type=None,
             year=None,
@@ -169,8 +170,7 @@ def test_taxi_zone_registration_uses_reference_source(monkeypatch):
 
 
 def test_ingest_cli_prints_success(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
-    monkeypatch.setattr(cli, "inspect_source", lambda source, root: metadata())
+    mock_preparation(monkeypatch, metadata())
     monkeypatch.setattr(
         cli,
         "_ingest_metadata",
@@ -197,11 +197,9 @@ def test_ingest_cli_prints_success(monkeypatch, capsys):
 
 
 def test_ingest_zones_cli_prints_skip_reason(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "ensure_local", lambda source, root: None)
-    monkeypatch.setattr(
-        cli,
-        "inspect_source",
-        lambda source, root: metadata(
+    mock_preparation(
+        monkeypatch,
+        metadata(
             dataset_name="taxi_zone_lookup",
             service_type=None,
             year=None,
@@ -279,3 +277,4 @@ def test_quality_cli_returns_nonzero_when_target_is_missing(monkeypatch, capsys)
 
     assert result == 1
     assert "Quality error: no successful run" in capsys.readouterr().err
+from types import SimpleNamespace

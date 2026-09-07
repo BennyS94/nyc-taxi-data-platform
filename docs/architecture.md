@@ -24,6 +24,20 @@ PostgreSQL analytics warehouse
 FastAPI read-only operational and aggregate analytics interface
 ```
 
+The source boundary optionally adds durable S3 storage without changing ingestion:
+
+```text
+NYC TLC -> source acquisition -> validated local landing/cache -> PyArrow/COPY
+                                  |                     ^
+                                  v                     |
+                         private versioned S3 ----------+
+                         checksum-addressed objects
+```
+
+S3 stores original source objects only. The local filesystem remains the materialization
+layer for the existing ingestion path; PostgreSQL raw data, operational metadata, marts,
+and Airflow metadata are not moved to S3.
+
 The DAG calls the same application services used by the CLI. It does not generate source
 URLs, inspect schemas, load batches, define quality SQL, or transform warehouse data.
 Task communication is limited to small serializable metadata such as partition labels,
