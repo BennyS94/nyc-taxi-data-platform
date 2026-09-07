@@ -77,6 +77,13 @@ AWS_REGION=<bucket-region>
 TLC_S3_BUCKET=<private-project-bucket>
 ```
 
+Docker Compose passes these values to every Airflow application service through the
+shared Airflow environment. Set them in the untracked `.env` file before `docker compose
+up`; do not add AWS access keys to Compose. Airflow uses boto3's normal credential chain,
+so credentials may come from the host/container environment or another standard boto3
+provider available inside the container. With `LANDING_BACKEND=local` (the default), the
+AWS settings may remain empty and Airflow continues to use the local landing volume.
+
 After `alembic upgrade head`, sync registered sources and verify safeguards:
 
 ```bash

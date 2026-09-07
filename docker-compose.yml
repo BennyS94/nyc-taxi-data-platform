@@ -62,6 +62,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      LANDING_BACKEND: ${LANDING_BACKEND:-local}
+      AWS_REGION: ${AWS_REGION:-}
+      TLC_S3_BUCKET: ${TLC_S3_BUCKET:-}
       TAXI_PIPELINE_ROOT: /opt/airflow/project
       DBT_PROJECT_DIR: /opt/airflow/project/dbt/taxi_analytics
       _AIRFLOW_DB_MIGRATE: "true"
