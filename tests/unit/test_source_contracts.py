@@ -139,6 +139,16 @@ def test_valid_taxi_zones_allow_null_descriptions(tmp_path):
     assert metadata.schema_version is None
 
 
+def test_unknown_taxi_zone_field_is_rejected(tmp_path):
+    write_zones(
+        tmp_path,
+        "LocationID,Borough,Zone,service_zone,new_source_field\n"
+        "1,Manhattan,First,Yellow Zone,unexpected\n",
+    )
+    with pytest.raises(SourceContractError, match="Unsupported Taxi Zone fields: new_source_field"):
+        inspect_source(taxi_zone_source(), tmp_path)
+
+
 @pytest.mark.parametrize("missing", TAXI_ZONE_REQUIRED_FIELDS)
 def test_missing_taxi_zone_field_is_rejected(tmp_path, missing):
     fields = [field for field in TAXI_ZONE_REQUIRED_FIELDS if field != missing]
@@ -163,4 +173,20 @@ def test_inspection_rejects_unknown_source_format(tmp_path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="Unsupported source format"):
+        inspect_source(source, tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("source", "schema"),
+    [
+        (yellow_trip_source(2025, 1), yellow_schema(version=2)),
+        (green_trip_source(2025, 1), green_schema()),
+    ],
+)
+def test_valid_parquet_schema_with_zero_rows_is_rejected(tmp_path, source, schema):
+    path = tmp_path / source.landing_path
+    write_yellow(path, schema, rows=0)
+
+    assert path.stat().st_size > 0
+    with pytest.raises(SourceContractError, match="Parquet source contains zero rows"):
         inspect_source(source, tmp_path)

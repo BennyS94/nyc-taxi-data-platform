@@ -61,6 +61,8 @@ def inspect_source(source: SourcePartition, root: Path) -> SourceFileMetadata:
             raise SourceContractError(f"Unsupported Parquet dataset: {source.dataset_name}")
         _, fingerprint = schema_fingerprint(schema)
         row_count = parquet.metadata.num_rows
+        if row_count == 0:
+            raise SourceContractError("Parquet source contains zero rows")
     elif source.source_format == "csv":
         row_count = validate_taxi_zones(path)
         fingerprint = None

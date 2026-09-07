@@ -156,11 +156,14 @@ def validate_green_schema(schema: pa.Schema) -> str:
 
 
 def validate_taxi_zones(path: Path) -> int:
-    """Validate required Taxi Zone columns and per-file LocationID identity."""
+    """Validate the exact Taxi Zone structure and per-file LocationID identity."""
     frame = pd.read_csv(path)
     missing = [name for name in TAXI_ZONE_REQUIRED_FIELDS if name not in frame.columns]
     if missing:
         raise SourceContractError(f"Missing Taxi Zone fields: {', '.join(missing)}")
+    unknown = [name for name in frame.columns if name not in TAXI_ZONE_REQUIRED_FIELDS]
+    if unknown:
+        raise SourceContractError(f"Unsupported Taxi Zone fields: {', '.join(unknown)}")
     if frame.empty:
         raise SourceContractError("Taxi Zone source is empty")
     if frame["LocationID"].isna().any():
