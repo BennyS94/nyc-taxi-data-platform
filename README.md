@@ -2,7 +2,8 @@
 
 The project includes source profiling and management, PostgreSQL-backed transactional raw
 ingestion, SQL-first quality checks, a dbt dimensional warehouse, and Apache Airflow 3
-orchestration for the monthly Yellow and Green pipeline.
+orchestration for the monthly Yellow and Green pipeline. A read-only FastAPI interface
+exposes operational metadata and aggregated warehouse analytics.
 Phase 01 profiles official NYC TLC Yellow Taxi trip records for December 2024 and January
 2025, plus the Taxi Zone Lookup. The generated reports capture source identity, physical
 schemas, nulls, observed domains, numeric and datetime distributions, zone reference
@@ -202,6 +203,24 @@ quality and dbt, and does not duplicate raw or fact rows.
 
 See [`docs/architecture.md`](docs/architecture.md) for component ownership and runtime
 flow.
+
+## Operational and analytics API
+
+The synchronous FastAPI application reads pipeline metadata from `ops` and analytics from
+dbt-owned `marts`; it does not trigger ingestion, Airflow, or dbt and does not expose
+individual trip rows. Typed endpoints cover health, source files, pipeline runs, quality
+results, summary metrics, monthly metrics, and top pickup zones. Interactive OpenAPI
+documentation is available at `/docs`.
+
+With `DATABASE_URL` configured and the application warehouse available, start it locally:
+
+```bash
+uvicorn taxi_pipeline.api.app:app --reload --port 8000
+```
+
+Operational list endpoints use newest-first ordering with `limit`/`offset` pagination.
+Analytics accept optional `service_type`, `start_date`, and `end_date` filters and retain
+the warehouse's source-faithful anomaly semantics.
 
 ## PostgreSQL setup
 

@@ -19,6 +19,9 @@ dbt staging, intermediate, dimensions, and incremental fact
    |
    v
 PostgreSQL analytics warehouse
+   |
+   v
+FastAPI read-only operational and aggregate analytics interface
 ```
 
 The DAG calls the same application services used by the CLI. It does not generate source
@@ -38,3 +41,8 @@ Airflow DAG runs and task instances are orchestration history stored in the sepa
 The local Docker topology contains PostgreSQL, a one-shot Airflow database initializer,
 an Airflow API/UI server, scheduler, and the DAG processor required by Airflow 3. It uses
 LocalExecutor and deliberately has no Redis, Celery workers, or Kubernetes components.
+
+FastAPI is separate from orchestration. It uses request-scoped synchronous SQLAlchemy
+sessions to read `ops.source_files`, `ops.pipeline_runs`, and `ops.data_quality_results`,
+and queries dbt-owned `marts` for aggregate analytics. It has no pipeline-control or data
+mutation endpoints.
