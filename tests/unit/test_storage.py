@@ -1,18 +1,22 @@
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 
 import pytest
 from botocore.exceptions import ClientError
 
+from taxi_pipeline.database.models import SourceFile
 from taxi_pipeline.landing.metadata import file_sha256
 from taxi_pipeline.sources.models import SourceFileMetadata
 from taxi_pipeline.storage import (
     LocalLandingStorage,
     S3LandingStorage,
     StorageIntegrityError,
+    StorageResult,
     build_storage,
     s3_key,
 )
+from taxi_pipeline.storage.service import _merge_storage_metadata
 
 
 class FakeS3Client:
@@ -203,3 +207,48 @@ def test_bucket_safeguards_are_checked():
         "public_access": "blocked",
         "encryption": "AES256",
     }
+
+
+def test_local_s3_local_transitions_preserve_durable_metadata(tmp_path):
+    path = tmp_path / "yellow.parquet"
+    path.write_bytes(b"recoverable source")
+    source_metadata = metadata(path)
+    source = SourceFile(storage_backend="local")
+    local_time = datetime.now(UTC)
+    local_result = StorageResult("local", None, None, local_time)
+
+    _merge_storage_metadata(source, local_result)
+    assert source.storage_backend == "local"
+    assert source.storage_uri is None
+
+    client = FakeS3Client()
+    s3_storage = S3LandingStorage("test-bucket", "us-east-1", client=client)
+    s3_result = s3_storage.store(source_metadata, path)
+    _merge_storage_metadata(source, s3_result)
+    durable_values = (
+        source.storage_backend,
+        source.storage_uri,
+        source.storage_version_id,
+        source.stored_at,
+    )
+    assert durable_values[:3] == ("s3", s3_result.uri, "version-1")
+
+    rerun_local_result = StorageResult(
+        "local", None, None, s3_result.stored_at + timedelta(seconds=1)
+    )
+    _merge_storage_metadata(source, rerun_local_result)
+    assert (
+        source.storage_backend,
+        source.storage_uri,
+        source.storage_version_id,
+        source.stored_at,
+    ) == durable_values
+
+    path.unlink()
+    restored = s3_storage.materialize(
+        storage_uri=source.storage_uri,
+        destination=path,
+        checksum_sha256=source_metadata.checksum_sha256,
+        file_size_bytes=source_metadata.file_size_bytes,
+    )
+    assert restored.read_bytes() == b"recoverable source"

@@ -42,10 +42,17 @@ def persist_storage_metadata(
         source = session.get(SourceFile, source_file_id)
         if source is None:
             raise ValueError(f"Unknown source file ID: {source_file_id}")
-        source.storage_backend = storage.backend
-        source.storage_uri = storage.uri
-        source.storage_version_id = storage.version_id
-        source.stored_at = storage.stored_at
+        _merge_storage_metadata(source, storage)
+
+
+def _merge_storage_metadata(source: SourceFile, storage: StorageResult) -> None:
+    """Record verified durable storage without allowing local reuse to erase it."""
+    if storage.backend == "local" and source.storage_backend == "s3" and source.storage_uri:
+        return
+    source.storage_backend = storage.backend
+    source.storage_uri = storage.uri
+    source.storage_version_id = storage.version_id
+    source.stored_at = storage.stored_at
 
 
 def sync_source(source_file_id: int, repository_root: Path) -> StorageResult:
