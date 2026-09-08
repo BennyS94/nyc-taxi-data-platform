@@ -266,7 +266,8 @@ Tests are separated by responsibility: fast unit tests avoid network and databas
 integration tests exercise real PostgreSQL migrations, constraints, COPY ingestion,
 rollback, quality SQL, and FastAPI queries; DAG tests validate Airflow structure without a
 scheduler. The end-to-end smoke ingests tiny committed Yellow, Green, and Taxi Zone
-fixtures, runs quality and dbt, verifies fact lineage, and queries the analytics API.
+fixtures into a per-test disposable database, runs quality and dbt, verifies no-op and
+new-source incremental transitions plus fact lineage, and queries the analytics API.
 
 Regenerate the deterministic offline fixtures when their explicit contract changes:
 

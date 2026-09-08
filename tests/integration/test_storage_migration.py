@@ -41,7 +41,7 @@ def test_storage_columns_default_local_and_accept_s3_metadata(db_session):
 
 
 def test_storage_migration_round_trip_preserves_application_database(
-    db_session, migration_database_url
+    db_session, disposable_database_url
 ):
     sentinel_uri = f"s3://bucket/landing/yellow/2025/02/{'e' * 64}.parquet"
     sentinel = SourceFile(
@@ -66,8 +66,8 @@ def test_storage_migration_round_trip_preserves_application_database(
 
     config = Config("alembic.ini")
     previous_url = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = migration_database_url
-    migration_engine = create_engine(migration_database_url)
+    os.environ["DATABASE_URL"] = disposable_database_url
+    migration_engine = create_engine(disposable_database_url)
     try:
         command.upgrade(config, "head")
         command.downgrade(config, "20260906_04")

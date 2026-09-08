@@ -58,11 +58,16 @@ def _yellow_values(include_cbd: bool) -> dict[str, list]:
     return values
 
 
-def _write_yellow(path: Path, *, include_cbd: bool) -> None:
+def _write_yellow(
+    path: Path,
+    *,
+    include_cbd: bool,
+    values: dict[str, list] | None = None,
+) -> None:
     fields = list(YELLOW_BASELINE_FIELDS)
     if include_cbd:
         fields.append(YELLOW_ADDITIVE_FIELD)
-    values = _yellow_values(include_cbd)
+    values = values or _yellow_values(include_cbd)
     schema = pa.schema([pa.field(name, YELLOW_FIELD_TYPES[name]) for name in fields])
     arrays = [pa.array(values[name], type=YELLOW_FIELD_TYPES[name]) for name in fields]
     pq.write_table(pa.Table.from_arrays(arrays, schema=schema), path, row_group_size=2)
@@ -105,6 +110,21 @@ def main() -> None:
     FIXTURES.mkdir(parents=True, exist_ok=True)
     _write_yellow(FIXTURES / "yellow_v1.parquet", include_cbd=False)
     _write_yellow(FIXTURES / "yellow_v2.parquet", include_cbd=True)
+    later_values = _yellow_values(True)
+    later_values["tpep_pickup_datetime"] = [
+        _source_datetime("2025-02-03T08:00:00"),
+        _source_datetime("2025-02-04T09:00:00"),
+    ]
+    later_values["tpep_dropoff_datetime"] = [
+        _source_datetime("2025-02-03T08:10:00"),
+        _source_datetime("2025-02-04T09:20:00"),
+    ]
+    later_values = {name: values[:2] for name, values in later_values.items()}
+    _write_yellow(
+        FIXTURES / "yellow_later.parquet",
+        include_cbd=True,
+        values=later_values,
+    )
     _write_green(FIXTURES / "green.parquet")
     (FIXTURES / "taxi_zones.csv").write_text(
         "LocationID,Borough,Zone,service_zone\n"

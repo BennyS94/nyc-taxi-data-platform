@@ -40,14 +40,14 @@ def postgres_engine():
 
 
 @pytest.fixture
-def migration_database_url() -> Iterator[str]:
-    """Create a database owned exclusively by one destructive migration test."""
+def disposable_database_url() -> Iterator[str]:
+    """Create a uniquely named database owned exclusively by one test."""
     test_url = os.getenv("TEST_DATABASE_URL")
     if not test_url:
         pytest.skip("set TEST_DATABASE_URL to run PostgreSQL migration tests")
 
     parsed_url = make_url(test_url)
-    database_name = f"nyc_tlc_migration_{uuid4().hex}"
+    database_name = f"nyc_tlc_test_{uuid4().hex}"
     maintenance_database = "postgres"
     if parsed_url.database == maintenance_database:
         maintenance_database = "template1"
@@ -64,6 +64,16 @@ def migration_database_url() -> Iterator[str]:
         with maintenance_engine.connect() as connection:
             connection.execute(text(f"DROP DATABASE {quoted_name}"))
         maintenance_engine.dispose()
+
+
+@pytest.fixture
+def isolated_postgres_engine(disposable_database_url):
+    """Upgrade and expose a PostgreSQL database with per-test lifecycle isolation."""
+    with _database_url(disposable_database_url):
+        command.upgrade(Config("alembic.ini"), "head")
+        engine = get_engine(disposable_database_url)
+        yield engine
+        engine.dispose()
 
 
 @pytest.fixture

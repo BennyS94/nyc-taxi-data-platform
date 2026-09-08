@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from taxi_pipeline.api.app import create_app
+from taxi_pipeline.api.dependencies import get_db_session
 from taxi_pipeline.database.models import DataQualityResult, GreenTrip, SourceFile, YellowTrip
 from taxi_pipeline.ingestion import ingest_source
 from taxi_pipeline.landing.metadata import inspect_source
@@ -24,13 +25,20 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures"
 
 
-def _metadata(filename: str, dataset: str, service: str | None):
-    partition = f"{service}/2025/01" if service else "reference/taxi_zones"
+def _metadata(
+    filename: str,
+    dataset: str,
+    service: str | None,
+    *,
+    year: int = 2025,
+    month: int = 1,
+):
+    partition = f"{service}/{year:04d}/{month:02d}" if service else "reference/taxi_zones"
     source = SourcePartition(
         dataset_name=dataset,
         service_type=service,
-        year=2025 if service else None,
-        month=1 if service else None,
+        year=year if service else None,
+        month=month if service else None,
         partition_key=partition,
         source_url=f"https://fixtures.invalid/{filename}",
         landing_path=filename,
@@ -39,7 +47,8 @@ def _metadata(filename: str, dataset: str, service: str | None):
     return inspect_source(source, FIXTURES)
 
 
-def test_fixture_pipeline_from_source_to_api(postgres_engine):
+def test_fixture_pipeline_from_source_to_api(isolated_postgres_engine):
+    postgres_engine = isolated_postgres_engine
     zones = ingest_source(
         postgres_engine,
         _metadata("taxi_zones.csv", "taxi_zone_lookup", None),
@@ -66,39 +75,77 @@ def test_fixture_pipeline_from_source_to_api(postgres_engine):
     assert yellow_quality.check_count > 0
     assert green_quality.check_count > 0
 
-    subprocess.run(
-        [sys.executable, "-m", "dbt.cli.main", "build", "--profiles-dir", "."],
-        cwd=ROOT / "dbt" / "taxi_analytics",
-        env=os.environ.copy(),
-        check=True,
-    )
+    _run_dbt_build(postgres_engine)
 
     with Session(postgres_engine) as session:
         assert session.scalar(select(func.count()).select_from(YellowTrip)) == 3
         assert session.scalar(select(func.count()).select_from(GreenTrip)) == 3
         assert session.scalar(select(func.count()).select_from(DataQualityResult)) > 0
         assert session.scalar(select(func.count()).select_from(SourceFile)) == 3
-        fact_count = session.scalar(select(func.count()).select_from(_fact_table(session)))
+        fact = _fact_table(session)
+        fact_count = session.scalar(select(func.count()).select_from(fact))
         unique_lineage = session.execute(
             _lineage_count_statement()
         ).one()
+        initial_rows = _fact_rows(session, fact, [yellow.source_file_id, green.source_file_id])
     assert fact_count == 6
     assert unique_lineage == (6, 6)
 
-    response = TestClient(create_app()).get("/analytics/summary")
-    assert response.status_code == 200
-    assert response.json()["trip_count"] == 6
+    _run_dbt_build(postgres_engine)
+    with Session(postgres_engine) as session:
+        fact = _fact_table(session)
+        assert session.scalar(select(func.count()).select_from(fact)) == 6
+        assert _fact_rows(
+            session, fact, [yellow.source_file_id, green.source_file_id]
+        ) == initial_rows
 
-    monthly_response = TestClient(create_app()).get("/analytics/monthly")
+    later_metadata = _metadata(
+        "yellow_later.parquet", "yellow_tripdata", "yellow", year=2025, month=2
+    )
+    later = ingest_source(postgres_engine, later_metadata, FIXTURES, batch_size=1)
+    assert later.status is RunStatus.SUCCEEDED
+    assert later.source_file_id not in {yellow.source_file_id, green.source_file_id}
+
+    _run_dbt_build(postgres_engine)
+    with Session(postgres_engine) as session:
+        fact = _fact_table(session)
+        assert session.scalar(select(func.count()).select_from(fact)) == 8
+        assert _fact_rows(
+            session, fact, [yellow.source_file_id, green.source_file_id]
+        ) == initial_rows
+        appended_rows = _fact_rows(session, fact, [later.source_file_id])
+        all_rows = _fact_rows(
+            session,
+            fact,
+            [yellow.source_file_id, green.source_file_id, later.source_file_id],
+        )
+    assert len(appended_rows) == 2
+
+    _run_dbt_build(postgres_engine)
+    with Session(postgres_engine) as session:
+        fact = _fact_table(session)
+        assert session.scalar(select(func.count()).select_from(fact)) == 8
+        assert _fact_rows(
+            session,
+            fact,
+            [yellow.source_file_id, green.source_file_id, later.source_file_id],
+        ) == all_rows
+
+    client = _api_client(postgres_engine)
+    response = client.get("/analytics/summary")
+    assert response.status_code == 200
+    assert response.json()["trip_count"] == 8
+
+    monthly_response = client.get("/analytics/monthly")
     assert monthly_response.status_code == 200
     assert any(
         row["month"] is None and row["service_type"] == "yellow" and row["trip_count"] == 1
         for row in monthly_response.json()
     )
 
-    zones_response = TestClient(create_app()).get("/analytics/zones")
+    zones_response = client.get("/analytics/zones")
     assert zones_response.status_code == 200
-    assert sum(row["trip_count"] for row in zones_response.json()) == 6
+    assert sum(row["trip_count"] for row in zones_response.json()) == 8
 
 
 def _fact_table(session: Session):
@@ -117,3 +164,43 @@ def _lineage_count_statement():
         FROM marts.fct_trips
         """
     )
+
+
+def _fact_rows(session: Session, fact, source_file_ids: list[int]) -> list[tuple]:
+    rows = session.execute(
+        select(fact)
+        .where(fact.c.source_file_id.in_(source_file_ids))
+        .order_by(fact.c.source_file_id, fact.c.source_row_number)
+    )
+    return [tuple(row) for row in rows]
+
+
+def _run_dbt_build(engine) -> None:
+    url = engine.url
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "POSTGRES_HOST": url.host or "localhost",
+            "POSTGRES_PORT": str(url.port or 5432),
+            "POSTGRES_USER": url.username or "",
+            "POSTGRES_PASSWORD": url.password or "",
+            "POSTGRES_DB": url.database or "",
+        }
+    )
+    subprocess.run(
+        [sys.executable, "-m", "dbt.cli.main", "build", "--profiles-dir", "."],
+        cwd=ROOT / "dbt" / "taxi_analytics",
+        env=environment,
+        check=True,
+    )
+
+
+def _api_client(engine) -> TestClient:
+    app = create_app()
+
+    def isolated_session():
+        with Session(engine) as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = isolated_session
+    return TestClient(app)
