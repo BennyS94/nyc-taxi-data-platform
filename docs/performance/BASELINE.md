@@ -57,9 +57,12 @@ stable better default. The production default remains 50,000 rows.
 ## Query baseline
 
 Five warm requests were timed for each representative query. Analytics summary and zones
-used Yellow trips for 2025-01-15; monthly analytics covered the complete warehouse.
+used Yellow trips for 2025-01-15; monthly analytics covered the complete warehouse. The
+historical upper-sample column below is the fourth sorted observation recorded by the old
+benchmark implementation. It is retained as measured evidence but is not labeled p95;
+future runs use the empirical nearest-rank p95 (`ceil(0.95 * n)`).
 
-| Workload | Median | p95 | Plan observation |
+| Workload | Median | Legacy upper sample | Plan observation |
 |---|---:|---:|---|
 | Analytics summary | 711.337 ms | 717.750 ms | Parallel sequential fact scan |
 | Monthly analytics | 2,683.454 ms | 2,686.623 ms | Required full fact scan and aggregate |

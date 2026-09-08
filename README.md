@@ -299,7 +299,8 @@ Real-data benchmarks use an isolated database and the existing local landing fil
 service type plus a post-build statistics refresh; selective daily summary and zone
 queries improved substantially while full-history monthly aggregation remained a simple
 scan. COPY batch comparisons did not provide stable evidence to change the 50,000-row
-default. PostgreSQL partitioning and BRIN were measured and rejected at the current scale.
+default. Partitioning was evaluated and not justified at the current scale; a measured
+BRIN trial did not improve the selective queries.
 
 Environment details, reproducible scripts, timings, query plans, storage cost, and the
 partitioning decision are documented in [`docs/performance/`](docs/performance/BASELINE.md).

@@ -30,9 +30,11 @@ query.
 ## API timings after optimization
 
 Five in-process FastAPI requests were measured through `TestClient`, including response
-validation and serialization.
+validation and serialization. The historical upper-sample column is the fourth sorted
+observation recorded by the old benchmark implementation, not p95. Future runs use the
+empirical nearest-rank p95 (`ceil(0.95 * n)`).
 
-| Endpoint | Median | p95 |
+| Endpoint | Median | Legacy upper sample |
 |---|---:|---:|
 | `/analytics/summary` (Yellow, one day) | 28.462 ms | 29.036 ms |
 | `/analytics/monthly` | 2,575.305 ms | 2,587.031 ms |

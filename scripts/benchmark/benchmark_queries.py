@@ -9,6 +9,8 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
+from taxi_pipeline.benchmarking import nearest_rank_percentile
+
 QUERIES = {
     "analytics_summary": """
         SELECT count(*), sum(f.total_amount), avg(f.trip_distance_miles),
@@ -74,10 +76,9 @@ def main() -> None:
                 started = time.perf_counter()
                 connection.execute(text(sql)).all()
                 timings.append((time.perf_counter() - started) * 1_000)
-            ordered = sorted(timings)
             results[name] = {
-                "median_ms": round(statistics.median(ordered), 3),
-                "p95_ms": round(ordered[max(0, int(len(ordered) * 0.95) - 1)], 3),
+                "median_ms": round(statistics.median(timings), 3),
+                "p95_ms": round(nearest_rank_percentile(timings, 0.95), 3),
             }
             if args.plans_dir:
                 args.plans_dir.mkdir(parents=True, exist_ok=True)
