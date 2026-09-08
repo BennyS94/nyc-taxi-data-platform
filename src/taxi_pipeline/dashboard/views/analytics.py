@@ -1,8 +1,6 @@
 """Filtered warehouse analytics view."""
 
-import calendar
 from collections.abc import Callable
-from datetime import date
 from typing import Any
 
 import pandas as pd
@@ -12,6 +10,7 @@ from taxi_pipeline.dashboard.components import (
     format_decimal,
     format_integer,
     format_money,
+    loaded_date_bounds,
     monthly_frame,
     render_empty,
     render_metrics,
@@ -22,15 +21,12 @@ Loader = Callable[..., Any]
 
 def render(load: Loader) -> None:
     st.title("Trip Analytics")
-    available = load("analytics_monthly")
-    dated_months = sorted(row["month"] for row in available if row.get("month"))
-    if not dated_months:
+    sources = load("list_all_sources")
+    date_bounds = loaded_date_bounds(sources)
+    if date_bounds is None:
         render_empty("No analytics data is available for filtering.")
         return
-
-    first = date.fromisoformat(dated_months[0])
-    last_month = date.fromisoformat(dated_months[-1])
-    last = last_month.replace(day=calendar.monthrange(last_month.year, last_month.month)[1])
+    first, last = date_bounds
 
     service_label = st.selectbox("Service Type", ["All", "Yellow", "Green"])
     selected_dates = st.date_input("Date Range", value=(first, last), min_value=first, max_value=last)

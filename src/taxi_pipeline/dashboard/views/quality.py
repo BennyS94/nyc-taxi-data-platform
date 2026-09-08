@@ -71,7 +71,7 @@ def render(load: Loader) -> None:
         for result in results
     ]
     st.subheader("Quality Results")
-    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
     warnings_frame = pd.DataFrame(
         [r for r in results if r["severity"] == "WARNING" and r["status"] == "violated"]

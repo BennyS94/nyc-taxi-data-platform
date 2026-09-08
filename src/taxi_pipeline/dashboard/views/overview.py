@@ -8,6 +8,7 @@ import streamlit as st
 
 from taxi_pipeline.dashboard.components import (
     format_integer,
+    loaded_date_bounds,
     monthly_frame,
     render_empty,
     render_metrics,
@@ -39,8 +40,12 @@ def render(load: Loader) -> None:
     )
     st.caption("Quality Warnings counts violated WARNING checks recorded across pipeline runs.")
 
-    monthly = monthly_frame(load("analytics_monthly"))
-    zones = pd.DataFrame(load("analytics_zones", limit=10))
+    date_bounds = loaded_date_bounds(sources)
+    date_params = (
+        {"start_date": date_bounds[0], "end_date": date_bounds[1]} if date_bounds else {}
+    )
+    monthly = monthly_frame(load("analytics_monthly", **date_params))
+    zones = pd.DataFrame(load("analytics_zones", **date_params, limit=10))
     if monthly.empty:
         render_empty("No analytics data is available yet.")
         return

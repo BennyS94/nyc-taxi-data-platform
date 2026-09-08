@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+import calendar
+from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
@@ -32,6 +33,10 @@ def partition_label(item: dict[str, Any]) -> str:
 
 def format_integer(value: Any) -> str:
     return f"{int(value or 0):,}"
+
+
+def format_optional_integer(value: Any) -> str:
+    return "—" if value is None else f"{int(value):,}"
 
 
 def format_money(value: Any) -> str:
@@ -69,6 +74,22 @@ def monthly_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
         return frame
     frame["month"] = frame["month"].fillna("Unknown")
     return frame
+
+
+def loaded_date_bounds(sources: list[dict[str, Any]]) -> tuple[date, date] | None:
+    months = sorted(
+        date(source["source_year"], source["source_month"], 1)
+        for source in sources
+        if source.get("status") == "loaded"
+        and source.get("service_type") in {"yellow", "green"}
+        and source.get("source_year")
+        and source.get("source_month")
+    )
+    if not months:
+        return None
+    last_month = months[-1]
+    last_day = calendar.monthrange(last_month.year, last_month.month)[1]
+    return months[0], last_month.replace(day=last_day)
 
 
 def render_empty(message: str) -> None:

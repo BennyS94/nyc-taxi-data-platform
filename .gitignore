@@ -9,6 +9,9 @@ data/
 .env
 .env.*
 !.env.example
+.aws/
+credentials
+.streamlit/secrets.toml
 
 # Python
 __pycache__/
@@ -17,6 +20,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 dist/
 build/
@@ -47,3 +52,8 @@ standalone_admin_password.txt
 
 # General local/runtime files
 *.log
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.backup

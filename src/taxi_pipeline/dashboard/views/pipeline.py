@@ -8,7 +8,7 @@ import streamlit as st
 
 from taxi_pipeline.dashboard.components import (
     duration_label,
-    format_integer,
+    format_optional_integer,
     partition_label,
     render_empty,
     render_metrics,
@@ -41,7 +41,7 @@ def render(load: Loader) -> None:
             }
             for run in runs
         ]
-        st.dataframe(pd.DataFrame(run_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(run_rows), hide_index=True, width="stretch")
         selected_run_id = st.selectbox(
             "Inspect Run",
             [run["run_id"] for run in runs],
@@ -66,7 +66,7 @@ def render(load: Loader) -> None:
         }
         for source in sources
     ]
-    st.dataframe(pd.DataFrame(source_rows), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(source_rows), hide_index=True, width="stretch")
     selected_source_id = st.selectbox(
         "Inspect Source",
         [source["source_file_id"] for source in sources],
@@ -92,8 +92,8 @@ def _render_run_detail(run: dict[str, Any]) -> None:
             ("Run ID", str(run["run_id"])),
             ("Source File ID", str(run.get("source_file_id") or "—")),
             ("Status", status_label(run["status"])),
-            ("Rows Read", format_integer(run.get("rows_read"))),
-            ("Rows Loaded", format_integer(run.get("rows_loaded"))),
+            ("Rows Read", format_optional_integer(run.get("rows_read"))),
+            ("Rows Loaded", format_optional_integer(run.get("rows_loaded"))),
             ("Duration", duration_label(run["started_at"], run.get("finished_at"))),
         ]
     )
@@ -118,7 +118,7 @@ def _render_source_detail(source: dict[str, Any]) -> None:
         "Checksum": source["checksum_sha256"],
         "Schema Fingerprint": source.get("schema_fingerprint") or "—",
         "File Size": f"{source['file_size_bytes']:,} bytes",
-        "Row Count": format_integer(source.get("row_count")),
+        "Row Count": format_optional_integer(source.get("row_count")),
         "Status": status_label(source["status"]),
         "Storage Backend": source["storage_backend"],
         "Storage URI": source.get("storage_uri") or "—",

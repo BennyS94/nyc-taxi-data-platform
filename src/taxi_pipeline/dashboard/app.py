@@ -42,7 +42,7 @@ def main() -> None:
             "Navigate",
             ["Overview", "Trip Analytics", "Pipeline Monitoring", "Data Quality"],
         )
-        if st.button("Refresh data", use_container_width=True):
+        if st.button("Refresh data", width="stretch"):
             st.cache_data.clear()
             st.rerun()
         st.divider()
