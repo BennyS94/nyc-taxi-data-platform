@@ -147,7 +147,12 @@ def dataframe_duplicate_profile(frame: pd.DataFrame) -> dict:
 
 def _stable_duplicate_frame(batch: pa.RecordBatch) -> pd.DataFrame:
     """Use schema-driven pandas dtypes so equal Arrow values hash identically."""
-    return batch.to_pandas(types_mapper=_stable_pandas_dtype)
+    frame = batch.to_pandas(types_mapper=_stable_pandas_dtype)
+    for field in batch.schema:
+        if pa.types.is_floating(field.type):
+            values = frame[field.name]
+            frame[field.name] = values.mask(values == 0, 0.0)
+    return frame
 
 
 def _stable_pandas_dtype(data_type: pa.DataType):
@@ -182,6 +187,9 @@ def _duplicate_value(value, data_type: pa.DataType):
         return (type_name, value.isoformat())
     if isinstance(value, np.generic):
         value = value.item()
-    if isinstance(value, float) and math.isnan(value):
-        return (type_name, "nan")
+    if isinstance(value, float):
+        if math.isnan(value):
+            return (type_name, "nan")
+        if value == 0:
+            value = 0.0
     return (type_name, value)
