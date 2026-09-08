@@ -9,7 +9,7 @@ from typing import Any
 import streamlit as st
 
 from taxi_pipeline.dashboard.api_client import APIClient, APIClientError
-from taxi_pipeline.dashboard.pages import analytics, overview, pipeline, quality
+from taxi_pipeline.dashboard.views import analytics, overview, pipeline, quality
 
 DEFAULT_API_BASE_URL = "http://localhost:8000"
 

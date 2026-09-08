@@ -1,4 +1,4 @@
-"""Filtered warehouse analytics page."""
+"""Filtered warehouse analytics view."""
 
 import calendar
 from collections.abc import Callable

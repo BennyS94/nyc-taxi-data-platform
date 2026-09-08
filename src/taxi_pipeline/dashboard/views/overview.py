@@ -1,4 +1,4 @@
-"""Platform overview page."""
+"""Platform overview view."""
 
 from collections.abc import Callable
 from typing import Any

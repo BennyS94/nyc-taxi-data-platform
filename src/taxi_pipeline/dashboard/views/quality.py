@@ -1,4 +1,4 @@
-"""Persisted data-quality results page."""
+"""Persisted data-quality results view."""
 
 from collections import Counter
 from collections.abc import Callable

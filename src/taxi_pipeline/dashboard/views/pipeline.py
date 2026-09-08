@@ -1,4 +1,4 @@
-"""Pipeline and source monitoring page."""
+"""Pipeline and source monitoring view."""
 
 from collections.abc import Callable
 from typing import Any
