@@ -125,10 +125,11 @@ identity. See [the S3 guide](docs/aws_s3.md).
 Phase 13 benchmarked an isolated 7.19-million-row warehouse on a documented local Windows
 machine. Yellow January COPY trials measured roughly 30,556–34,358 rows/second across
 25k–250k batch sizes, which did not justify changing the 50,000-row default. Query plans
-supported one dbt-owned B-tree on pickup date/service plus post-build statistics. A BRIN
-trial and table partitioning did not improve the measured workload enough to justify
-their complexity. These local measurements are evidence, not production SLAs. Full
-results and plans are in [the performance report](docs/performance/BASELINE.md).
+supported one dbt-owned B-tree on pickup date/service plus post-build statistics. A measured
+BRIN trial did not improve the workload enough to justify its cost, while table partitioning
+was evaluated and not justified at the current scale and access patterns. These local
+measurements are evidence, not production SLAs. Full results and plans are in
+[the performance report](docs/performance/BASELINE.md).
 
 ## Technology stack
 
@@ -138,18 +139,54 @@ GitHub Actions.
 
 ## Local setup
 
-Requirements: Python 3.11+, Docker Compose, and Git. Copy the example configuration and
-replace every local secret placeholder:
+Requirements: Python 3.11+, Docker Compose, and Git. Run commands from the repository
+root. Copy the example configuration using your shell:
 
 ```bash
 cp .env.example .env
+```
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edit `.env` to configure the project and replace every local secret placeholder. Keep
+the example's unquoted `KEY=value` format. Ensure `DATABASE_URL` matches your PostgreSQL
+settings, URL-encoding password characters where needed in that URL.
+
+Load the values into the **current shell before running Alembic or application commands**.
+These loaders preserve values literally; Alembic does not load `.env` automatically.
+
+Bash-compatible shells:
+
+```bash
+while IFS= read -r entry || [ -n "$entry" ]; do
+  entry=${entry%$'\r'}
+  if [[ "$entry" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+    export "$entry"
+  fi
+done < .env
+```
+
+PowerShell:
+
+```powershell
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+    }
+}
+```
+
+Then, in that configured shell (either Bash or PowerShell):
+
+```bash
 python -m pip install -e ".[dev]"
-docker compose up -d postgres
+docker compose up -d --wait postgres
 alembic upgrade head
 ```
 
-Export the variables from `.env` in the shell running application commands. Build the
-warehouse after loading sources:
+Build the warehouse after loading sources:
 
 ```bash
 python -m taxi_pipeline ingest-zones
@@ -160,7 +197,8 @@ python -m taxi_pipeline quality run --service green --year 2025 --month 1
 dbt build --project-dir dbt/taxi_analytics --profiles-dir dbt/taxi_analytics
 ```
 
-Start the read-only interfaces in separate shells:
+Start the read-only interfaces in separate shells. Load `.env` using the corresponding
+loader above in the FastAPI shell before starting it:
 
 ```bash
 uvicorn taxi_pipeline.api.app:app --reload --port 8000
@@ -170,8 +208,7 @@ streamlit run src/taxi_pipeline/dashboard/app.py
 `API_BASE_URL` defaults to `http://localhost:8000`; Streamlit needs no database or AWS
 credentials. Initialize the local Airflow environment with `docker compose up airflow-init`,
 then start `airflow-api-server`, `airflow-scheduler`, and `airflow-dag-processor` as shown
-in [the demo guide](docs/DEMO.md). PowerShell users can use `Copy-Item .env.example .env`
-and set environment variables with `$env:NAME = "value"`.
+in [the demo guide](docs/DEMO.md).
 
 ## Testing and CI
 
@@ -203,7 +240,8 @@ choices and their evidence.
 - **Raw/dbt ownership:** Alembic owns `raw`/`ops`; dbt owns analytical schemas.
 - **Thin Airflow DAGs:** business logic stays testable from Python and the CLI.
 - **No Spark or Kafka:** the measured monthly batch-file workload does not justify them.
-- **No table partitioning:** Phase 13 plans showed insufficient benefit at current scale.
+- **No table partitioning:** it was evaluated and not justified by the current scale and
+  access patterns.
 
 ## Repository structure
 

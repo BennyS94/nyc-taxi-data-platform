@@ -2,13 +2,57 @@
 
 ## Before the demo
 
-Copy `.env.example` to `.env`, replace all local placeholders, install the project, and
-make sure migrations and the warehouse are current:
+Run from the repository root. Copy `.env.example` to `.env` using your shell:
+
+```bash
+cp .env.example .env
+```
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edit `.env` to configure the project and replace every local secret placeholder. Keep
+the example's unquoted `KEY=value` format. Ensure `DATABASE_URL` matches your PostgreSQL
+settings, URL-encoding password characters where needed in that URL.
+
+Load the values into the **current shell before running Alembic or application commands**.
+These loaders preserve values literally; Alembic does not load `.env` automatically.
+
+Bash-compatible shells:
+
+```bash
+while IFS= read -r entry || [ -n "$entry" ]; do
+  entry=${entry%$'\r'}
+  if [[ "$entry" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+    export "$entry"
+  fi
+done < .env
+```
+
+PowerShell:
+
+```powershell
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+    }
+}
+```
+
+Then, in that configured shell (either Bash or PowerShell), install the project and
+run migrations:
 
 ```bash
 python -m pip install -e ".[dev]"
-docker compose up -d postgres
+docker compose up -d --wait postgres
 alembic upgrade head
+```
+
+For a fresh database, follow the [README ingestion commands](../README.md#local-setup)
+to load sources before building the warehouse:
+
+```bash
 dbt build --project-dir dbt/taxi_analytics --profiles-dir dbt/taxi_analytics
 ```
 
@@ -20,7 +64,8 @@ docker compose up -d airflow-api-server airflow-scheduler airflow-dag-processor
 docker compose exec airflow-api-server airflow dags unpause tlc_monthly_pipeline
 ```
 
-Start the presentation services in separate shells:
+Start the presentation services in separate shells. Load `.env` using the corresponding
+loader above in the FastAPI shell before starting it:
 
 ```bash
 uvicorn taxi_pipeline.api.app:app --port 8000
