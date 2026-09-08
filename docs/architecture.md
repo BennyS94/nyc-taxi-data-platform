@@ -1,62 +1,59 @@
-# Local platform architecture
+# Final platform architecture
 
-Airflow orchestrates. The application and dbt components implement the work.
-
-```text
-Airflow 3 (LocalExecutor, monthly schedule/manual parameters)
-   |
-   v
-taxi_pipeline source handling and source contracts
-   |
-   v
-taxi_pipeline registry and transactional raw ingestion
-   |
-   v
-taxi_pipeline PostgreSQL quality evaluation
-   |
-   v
-dbt staging, intermediate, dimensions, and incremental fact
-   |
-   v
-PostgreSQL analytics warehouse
-   |
-   v
-FastAPI read-only operational and aggregate analytics interface
+```mermaid
+flowchart TD
+    TLC[NYC TLC] --> SOURCE[Source management<br/>download, SHA-256, contracts]
+    SOURCE --> LOCAL[Local landing<br/>materialization/cache]
+    SOURCE --> S3[Private AWS S3<br/>durable immutable objects]
+    S3 -->|verified recovery| LOCAL
+    LOCAL --> INGEST[PyArrow batches<br/>transactional PostgreSQL COPY]
+    INGEST --> RAW[(PostgreSQL raw)]
+    INGEST --> OPS[(PostgreSQL ops)]
+    RAW --> QUALITY[SQL data quality]
+    OPS --> QUALITY
+    RAW --> STAGING[dbt staging]
+    STAGING --> INTERMEDIATE[dbt intermediate]
+    INTERMEDIATE --> MARTS[(dbt marts)]
+    AIRFLOW[Airflow 3<br/>monthly orchestration] --> SOURCE
+    AIRFLOW --> INGEST
+    AIRFLOW --> QUALITY
+    AIRFLOW --> STAGING
+    OPS --> API[FastAPI<br/>read-only]
+    MARTS --> API
+    API --> STREAMLIT[Streamlit<br/>read-only visualization]
+    CI[GitHub Actions] -. repository validation .-> INGEST
+    CI -.-> STAGING
+    CI -.-> AIRFLOW
+    CI -.-> API
+    CI -.-> STREAMLIT
 ```
 
-The source boundary optionally adds durable S3 storage without changing ingestion:
+## Ownership boundaries
 
-```text
-NYC TLC -> source acquisition -> validated local landing/cache -> PyArrow/COPY
-                                  |                     ^
-                                  v                     |
-                         private versioned S3 ----------+
-                         checksum-addressed objects
-```
+| Component | Responsibility | Does not own |
+|---|---|---|
+| Python/Alembic | source handling, `raw`, `ops`, ingestion, quality | analytical transforms |
+| dbt | `staging`, `intermediate`, `marts` | raw or operational state |
+| Airflow | task ordering, scheduling, retries | pipeline business logic |
+| FastAPI | read-only operations and aggregate analytics | orchestration or mutation |
+| Streamlit | API-backed visualization | SQL access or pipeline control |
+| S3 | durable immutable source objects | warehouse or operational data |
 
-S3 stores original source objects only. The local filesystem remains the materialization
-layer for the existing ingestion path; PostgreSQL raw data, operational metadata, marts,
-and Airflow metadata are not moved to S3.
+The DAG passes small identifiers and result summaries through XCom and invokes the same
+application services used by the CLI. Source registration remains authoritative for
+file-level idempotency; dbt remains authoritative for warehouse incrementality.
 
-The DAG calls the same application services used by the CLI. It does not generate source
-URLs, inspect schemas, load batches, define quality SQL, or transform warehouse data.
-Task communication is limited to small serializable metadata such as partition labels,
-source-file IDs, run IDs, decisions, statuses, and row counts.
+## Storage path
 
-Yellow and Green execute sequentially to keep local database and memory demand modest.
-Application source registration and ingestion remain authoritative for idempotency, while
-dbt owns warehouse incrementality. A source revision is recorded as a skipped application
-attempt but raised as a failed Airflow task so downstream transformations cannot continue.
+Local mode uses the deterministic landing path directly. S3 mode still validates through
+a local temporary file, stores a checksum-addressed durable object, and materializes it
+back to the same local path before the proven PyArrow/COPY loader runs. This keeps cloud
+storage additive and preserves the local development path.
 
-Airflow DAG runs and task instances are orchestration history stored in the separate
-`airflow` database. `ops.pipeline_runs` is application ingestion history stored in
-`nyc_tlc`; the two run identities have different ownership and must not be conflated.
+## Operational and analytics paths
 
-The local Docker topology contains PostgreSQL, a one-shot Airflow database initializer,
-an Airflow API/UI server, scheduler, and the DAG processor required by Airflow 3. It uses
-LocalExecutor and deliberately has no Redis, Celery workers, or Kubernetes components.
-
-FastAPI is separate from orchestration. It uses request-scoped synchronous SQLAlchemy
-sessions to read `ops.source_files`, `ops.pipeline_runs`, and `ops.data_quality_results`,
-and queries dbt-owned `marts` for aggregate analytics. It has no pipeline-control or data
-mutation endpoints.
+`ops.pipeline_runs` records application ingestion attempts, including explicit skipped
+reasons. Airflow's metadata database records orchestration runs; the two identities are
+not conflated. FastAPI reads `ops.source_files`, `ops.pipeline_runs`, and
+`ops.data_quality_results`, while aggregate analytics come from dbt-owned marts.
+Streamlit has only `API_BASE_URL` and never receives database or AWS credentials.
